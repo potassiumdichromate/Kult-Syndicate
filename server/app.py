@@ -315,7 +315,7 @@ def create_server(game=None,port=8787,host='127.0.0.1'):
                 with self.game.tx() as c:self.game.social_sweep(c)
             except Exception as exc:print('Social maintenance failed:',type(exc).__name__,flush=True)
     s=MaintainedServer((host,port),Handler);s.game=game or Game();s.limits=defaultdict(deque);s.limit_lock=threading.Lock()
-    s.public_origin=os.getenv('PUBLIC_ORIGIN',f'http://localhost:{s.server_port}')
+    s.public_origin=os.getenv('PUBLIC_ORIGIN') or os.getenv('RENDER_EXTERNAL_URL') or f'http://localhost:{s.server_port}'
     require(s.game.demo or s.public_origin.startswith('https://'),'Production PUBLIC_ORIGIN must use HTTPS',500)
     return s
 if __name__=='__main__':
