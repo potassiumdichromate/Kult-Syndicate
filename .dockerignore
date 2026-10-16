@@ -1,0 +1,7 @@
+data
+.env
+.venv
+node_modules
+game/.godot
+__pycache__
+.git

@@ -1,0 +1,4 @@
+'use strict';
+// Same-origin web host bridge. Authentication cookies remain HttpOnly.
+let csrf='';
+window.SyndicatesBridge={ready:()=>document.body.dataset.syndicatesReady='true',request:async(raw,callback)=>{try{const {path,body}=JSON.parse(raw);if(!/^\/api\/(state|session|policy|social\/policy|pvp\/(?:create|join|choice|leave)|hiring\/(?:create|accept|cancel)|missions(?:\/job_[a-f0-9]+\/(?:choice|withdraw|resolve))?|resupply|crew\/(?:create|join|deposit|claim))$/.test(path))throw Error('Bridge route rejected');const r=await fetch(path,{method:body===null?'GET':'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf,'X-Request-ID':crypto.randomUUID()},...(body===null?{}:{body:JSON.stringify(body)})});const data=await r.json();if(!r.ok)throw Error(data.error||'Request failed');if(data.csrf)csrf=data.csrf;callback(JSON.stringify({ok:true,data}));}catch(e){callback(JSON.stringify({ok:false,error:e.message}))}}};

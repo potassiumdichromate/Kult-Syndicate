@@ -1,0 +1,55 @@
+// End-to-end smoke test against the real demo server. Start it before running this file.
+const {chromium}=require('playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+(async()=>{
+  const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader'],...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
+  const page=await browser.newPage({viewport:{width:1440,height:1000}});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://localhost:8787');
+  await page.getByRole('button',{name:/Enter local sandbox/}).click();
+  await page.getByRole('button',{name:'Scout the canal'}).click();
+  await page.getByText('MISSION BRIEF').waitFor();
+  assert.equal(await page.getByText('1 Supplies',{exact:false}).count()>0,true);
+  await page.getByRole('button',{name:'Commit to this job'}).click();
+  await page.getByRole('button',{name:/Climb to the rooftop/}).click();
+  await page.getByRole('button',{name:/Cross-check both beacons/}).click();
+  await page.getByRole('button',{name:/Report the route with/}).click();
+  await page.getByRole('button',{name:'Return for resolution'}).click({timeout:15000});
+  await page.getByRole('button',{name:'Review the decisions'}).click();
+  await page.getByRole('button',{name:'Verify signature',exact:true}).click();
+  await page.getByText(/Signature, replay hash and seed commitment verified/).waitFor();
+  await page.getByRole('button',{name:'Close replay'}).click();
+  await page.getByRole('button',{name:'Passport',exact:true}).click();
+  await page.getByText('SYNDICATES DOMAIN ONLY').waitFor();
+  await page.getByRole('button',{name:'Permissions',exact:true}).click();
+  await page.locator('#stopped').check();
+  await page.getByRole('button',{name:'Save permissions'}).click();
+  await page.getByRole('button',{name:'Activate stop'}).click();
+  await page.getByRole('button',{name:'District',exact:true}).click();
+  await page.getByText('Emergency stop is active.').waitFor();
+  await page.getByRole('button',{name:'Crew',exact:true}).click();
+  await page.getByPlaceholder('The Lantern Keepers').fill('Lantern Testers');
+  await page.getByRole('button',{name:'Create crew',exact:true}).click();
+  await page.getByText('Lantern Testers',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Play & hire',exact:true}).click();
+  await page.getByText('Find your rival.').waitFor();
+  fs.mkdirSync('test-results',{recursive:true});
+  await page.screenshot({path:'test-results/desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole('button',{name:'District',exact:true}).click();
+  if(await page.getByRole('button',{name:'List view',exact:true}).isVisible())await page.getByRole('button',{name:'List view',exact:true}).click();
+  assert.equal(await page.locator('#map-list').isVisible(),true);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.screenshot({path:'test-results/mobile-list.png',fullPage:true});
+  assert.deepEqual(errors,[]);
+  if(process.env.TEST_GODOT==='yes'){
+    await page.setViewportSize({width:1440,height:1000});
+    await page.getByRole('button',{name:'Godot game',exact:true}).click();
+    await page.frameLocator('#godot-frame').locator('body[data-syndicates-ready="true"]').waitFor({state:'attached',timeout:45000});
+    await page.frameLocator('#godot-frame').locator('#canvas').waitFor({state:'visible'});
+    await page.screenshot({path:'test-results/godot.png',fullPage:true});
+  }
+  await browser.close();
+  console.log('Browser gameplay, receipt, policy, crew, exchange, mobile'+(process.env.TEST_GODOT==='yes'?', Godot boot':'')+': PASS');
+})().catch(e=>{console.error(e);process.exit(1)});

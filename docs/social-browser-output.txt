@@ -1,0 +1,2 @@
+Executed tests/browser-social.cjs against the local demo server with two separate browser contexts.
+Two real browser sessions: live PvP → private lock → result → qualified hiring → exact mission → paid escrow → mobile: PASS

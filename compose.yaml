@@ -1,0 +1,36 @@
+services:
+  syndicates:
+    build: .
+    ports: ["127.0.0.1:8787:8787"]
+    environment:
+      SYNDICATES_DEMO: "no"
+      PUBLIC_ORIGIN: "${PUBLIC_ORIGIN:?Set the HTTPS Syndicates origin}"
+      KULT_SYNDICATES_LAUNCH_SECRET_FILE: /run/secrets/syndicates_launch
+      SYNDICATES_SIGNING_KEY_FILE: /run/secrets/syndicates_signing
+    secrets: [syndicates_launch, syndicates_signing]
+    volumes: ["syndicates-data:/data"]
+    restart: unless-stopped
+  receipt-worker:
+    build: .
+    command: ["python", "server/deliver.py"]
+    environment:
+      SYNDICATES_DEMO: "no"
+      KULT_SYNDICATES_LAUNCH_SECRET_FILE: /run/secrets/syndicates_launch
+      KULT_SYNDICATES_CALLBACK_SECRET_FILE: /run/secrets/syndicates_callback
+      SYNDICATES_SIGNING_KEY_FILE: /run/secrets/syndicates_signing
+      KULT_WORLD_RECEIPT_URL: "${KULT_WORLD_RECEIPT_URL:?Set the World receipt endpoint}"
+    secrets: [syndicates_launch, syndicates_callback, syndicates_signing]
+    volumes: ["syndicates-data:/data"]
+    depends_on:
+      syndicates:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  syndicates-data:
+secrets:
+  syndicates_launch:
+    file: "${SYNDICATES_LAUNCH_SECRET_FILE:?Provide an existing launch secret file}"
+  syndicates_callback:
+    file: "${SYNDICATES_CALLBACK_SECRET_FILE:?Provide an existing callback secret file}"
+  syndicates_signing:
+    file: "${SYNDICATES_SIGNING_KEY_FILE:?Provide an existing Ed25519 signing key PEM}"

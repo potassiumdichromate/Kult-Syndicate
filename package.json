@@ -1,0 +1,14 @@
+{
+  "name": "kult-syndicates-qa",
+  "version": "0.3.2-beta.1",
+  "private": true,
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -v",
+    "test:browser": "node tests/browser.cjs",
+    "test:social": "node tests/browser-social.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1",
+    "@napi-rs/canvas": "0.1.100"
+  }
+}

@@ -1,0 +1,30 @@
+# Render Blueprint: one Docker web service with a persistent disk.
+# Render disks attach to a single service, so the receipt worker runs in the
+# same container (only when KULT_WORLD_RECEIPT_URL is set).
+services:
+  - type: web
+    name: kult-syndicates
+    runtime: docker
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /api/health
+    dockerCommand: >-
+      sh -c 'if [ -n "$KULT_WORLD_RECEIPT_URL" ]; then python server/deliver.py & fi; exec python server/app.py'
+    disk:
+      name: syndicates-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SYNDICATES_DEMO
+        value: "no"
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: KULT_WORLD_RECEIPT_URL
+        sync: false
+      # Upload these as Render Secret Files with exactly these names.
+      - key: KULT_SYNDICATES_LAUNCH_SECRET_FILE
+        value: /etc/secrets/launch_secret
+      - key: KULT_SYNDICATES_CALLBACK_SECRET_FILE
+        value: /etc/secrets/callback_secret
+      - key: SYNDICATES_SIGNING_KEY_FILE
+        value: /etc/secrets/signing_key.pem
