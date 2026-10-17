@@ -22,7 +22,8 @@ class References(HTMLParser):
 
 def check():
     required = [GODOT / ("index" + extension) for extension in
-                (".html", ".js", ".wasm", ".pck", ".png")]
+                (".html", ".js", ".wasm", ".pck", ".png",
+                 ".audio.worklet.js", ".audio.position.worklet.js")]
     required += [GODOT / "bootstrap-1.js", WEB / "godot-bridge.js"]
     missing = [str(path.relative_to(WEB)) for path in required
                if not path.is_file() or path.stat().st_size == 0]
