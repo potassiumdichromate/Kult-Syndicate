@@ -13,8 +13,11 @@ class GameTests(unittest.TestCase):
  def start(self,kind='scout',s=None):return self.cmd('/api/missions',{'kind':kind},s)['missionId']
  def finish(self,kind='scout',good=True,s=None):
   mid=self.start(kind,s)
+  paths={'scout':['roof','verify','qualified'],'negotiate':['bounded','limited','honor'],'defend':['canal','observe','archive'],'heist':['canal','reroute','extract']}
   for step in range(3):
-   m=self.state(s)['mission'];o=next(o for o in m['stage']['options'] if (o['id']==m['recommendation']['action'])==good)
+   m=self.state(s)['mission'];target=paths[kind][step]
+   if kind=='heist' and step==0 and m['context']['patrol']=='canal':target='gate'
+   o=next(o for o in m['stage']['options'] if (o['id']==target)==good)
    self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':o['id']},s)
   return self.cmd(f'/api/missions/{mid}/resolve',s=s)['receipt']
  def ticket(self,**kw):
@@ -22,6 +25,33 @@ class GameTests(unittest.TestCase):
  def test_all_four_mission_loops(self):
   for kind in ['scout','negotiate','defend','heist']:
    r=self.finish(kind);self.assertEqual(r['outcome'],'SUCCESS');self.assertTrue(self.g.verify(r));self.assertEqual(r['opponentType'],'NPC')
+ def test_signed_scout_intel_changes_next_heist(self):
+  before=self.state();self.assertIsNone(before['operation']['lead'])
+  scout=self.finish('scout');lead=self.state()['operation']['lead']
+  self.assertEqual(lead['receiptId'],scout['id']);self.assertIn(lead['patrol'],('canal','gate'))
+  mid=self.start('heist');m=self.state()['mission']
+  self.assertEqual(m['context']['scoutReceipt'],scout['id']);self.assertEqual(m['context']['patrol'],lead['patrol'])
+  self.assertIn('signed Scout report',m['stage']['text']);self.assertNotIn('action',m['recommendation'])
+  for step in range(3):
+   m=self.state()['mission'];choice=({'canal':'gate','gate':'canal'}[lead['patrol']] if step==0 else ['','reroute','extract'][step])
+   self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':choice})
+  heist=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertEqual(heist['outcome'],'SUCCESS')
+  self.assertEqual(heist['context']['scoutReceipt'],scout['id']);self.assertTrue(self.g.verify(heist))
+  self.assertEqual(self.state()['operation']['completedReceipt'],heist['id'])
+ def test_unverified_or_old_scout_cannot_supply_lead(self):
+  r=self.finish('scout',good=False);self.assertIsNone(self.state()['operation']['lead'])
+  self.assertIsNone(self.g.scout_lead([{**r,'outcome':'SUCCESS','createdAt':time.time()-86401}]))
+  self.start('heist');self.assertIsNone(self.state()['mission']['context']['scoutReceipt'])
+ def test_territory_benefits_are_bound_to_mission_start(self):
+  self.cmd('/api/crew/create',{'name':'Lantern Keepers'});self.cmd('/api/crew/deposit',{'amount':10})
+  self.finish('defend');self.finish('defend')
+  self.cmd('/api/crew/claim',{'block':'workshop'});self.assertEqual(self.state()['missions'][3]['cost'],2)
+  self.cmd('/api/crew/claim',{'block':'garden'})
+  mid=self.start('scout');self.assertTrue(self.state()['mission']['context']['gardenBenefit'])
+  for step,choice in enumerate(['roof','verify','qualified']):self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':choice})
+  r=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertEqual(r['reward']['intel'],4)
+  self.assertTrue(r['context']['gardenBenefit']);self.assertTrue(self.g.verify(r))
+  self.start('heist');self.assertTrue(self.state()['mission']['context']['workshopBenefit'])
  def test_miss_is_persistent_and_signed(self):
   r=self.finish(good=False);self.assertEqual(r['outcome'],'MISS');self.assertEqual(self.state()['receipts'][0]['id'],r['id']);self.assertTrue(self.g.verify(r))
  def test_forged_outcome_rejected(self):
@@ -64,6 +94,13 @@ class GameTests(unittest.TestCase):
   with self.assertRaises(Problem):self.cmd(f'/api/missions/{mid}/withdraw',s=other)
  def test_restart_preserves_active_mission_and_key(self):
   mid=self.start();g2=Game(self.tmp.name,demo=True,secret='x'*40,delay=0);self.assertEqual(g2.state(self.s['token'])['mission']['id'],mid);self.assertEqual(g2.key_id,self.g.key_id)
+ def test_previous_content_version_pending_mission_still_verifies(self):
+  mid=self.start()
+  with self.g.tx() as c:
+   m=c.execute('SELECT seed,context FROM missions WHERE id=?',(mid,)).fetchone();context=json.loads(m['context']);context.pop('ruleVersion')
+   c.execute('UPDATE missions SET context=?,commitment=? WHERE id=?',(json.dumps(context),digest(dict(seed=m['seed'],mission=mid,version='switchyard-1.0.0')),mid))
+  for step,choice in enumerate(['roof','verify','qualified']):self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':choice})
+  r=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertEqual(r['contentVersion'],'switchyard-1.0.0');self.assertTrue(self.g.verify(r))
  def test_signed_launch_binds_same_existing_identity(self):
   first=self.g.login({'ticket':self.ticket()});self.assertEqual(first['agent']['id'],'arena-existing-1');r=self.finish(s=first);self.assertEqual(r['label'],'SERVICE_VERIFIED')
   second=self.g.login({'ticket':self.ticket()});self.assertEqual(self.state(second)['receipts'][0]['id'],r['id'])

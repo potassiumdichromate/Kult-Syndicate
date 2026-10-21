@@ -1,10 +1,11 @@
 {
   "name": "kult-syndicates-qa",
-  "version": "0.3.2-beta.1",
+  "version": "0.5.1-beta.1",
   "private": true,
   "scripts": {
     "test": "python3 -m unittest discover -s tests -v",
     "test:browser": "node tests/browser.cjs",
+    "test:world": "node tests/browser-world.cjs",
     "test:social": "node tests/browser-social.cjs"
   },
   "devDependencies": {

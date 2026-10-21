@@ -1,29 +1,29 @@
-# UX handoff — 0.3.2-beta.1
+# KULT Syndicates 0.4.0 — World district UX handoff
 
-The browser shell and compiled Godot game share the same authoritative API, identity and receipts. The browser is the primary mobile path; Godot is an optional full game view on desktop.
+## What changed
 
-## Player journey
+The default browser experience is now a locally bundled Three.js isometric district. Seven original procedural landmarks sit around a canal with bridges, lights, foliage and a rail depot. Clicking a building or its keyboard-accessible label opens the existing mission or crew flow. The Agent follows a walkable route to the selected mission. Mission choice and outcome remain server-authoritative; movement is visual presentation.
 
-1. World launch binds the existing Agent. Sandbox entry is clearly separate.
-2. District: select a building or list item, review cost and policy, then commit.
-3. Make three choices. Return for the result. Replay and export the receipt, including misses.
-4. Play & hire: explicitly enable PvP/hiring, then challenge a player or post a bounded assignment.
-5. PvP reveals choices only after both lock. Deadline, locked status and previous rounds remain visible. A forfeit needs confirmation.
-6. Hiring explains costs and qualification before acceptance; the assigned mission opens immediately. The buyer sees locked, paid or refunded state. Provider can resume from its contract card.
-7. Passport separates NPC, PLAYER and AGENT records. A service settlement is not an Arena win.
+The shell now uses charcoal, violet and lime, compact resource counters, a clear three-step journey, a contextual mission panel, and responsive job cards. The same theme covers Passport, permissions, hiring, duels and crew. Buttons explain entry cost before committing. Sandbox identity remains explicit.
 
-## Interface behavior
+## Navigation and accessibility
 
-- Responsive cream/forest/lime visual system, readable cards and large tactical controls.
-- List path when Canvas rendering fails; phone default list for mission navigation.
-- Two-second Exchange polling pauses for hidden documents and active commands. Forms preserve entered budget/domain during updates.
-- Server-relative countdowns, reconnect status, empty states without fake population, escaped player text.
-- Keyboard focus indicators, semantic buttons/forms, labelled dialogs, reduced-motion styling, screen-reader status messages.
-- Confirmation before escrow posting, job acceptance, cancellation, duel forfeit and emergency stop.
-- Godot source provides Exchange, opt-in, challenge/lock/leave, job post/accept/cancel, mission resume and Passport controls.
+- Click a landmark or its labelled button to inspect it; keyboard Tab reaches every location.
+- Drag to pan; wheel or +/− buttons zoom; reset restores the starting camera.
+- Focus the map and use arrows to pan; +/− zoom, 0 resets.
+- Mobile starts on the 3D district; tap locations or use List view for direct navigation.
+- Device pixel ratio is capped at 1.6. Rendering pauses when the document or district is hidden. Reduced-motion preferences stop decorative water/marker motion.
+- WebGL creation/context failure falls back to the original Canvas renderer; List view remains available.
+- Three.js r170 and its MIT license are bundled. No remote scripts, fonts, textures or API keys are required by this visual upgrade.
 
-## Acceptance before public launch
+## Embed in KULT World
 
-Actual browser captures are in `test-results/`. Backend and automated browser checks are listed in `VALIDATION.md`. The team still needs physical iOS/Android touch/performance testing, target-device Godot inspection, real KULT staging identity/delivery and production operations checks. Procedural district art is original stand-in game art; it is not the previously supplied character spritesheet.
+Use the existing signed launch adapter in `integration/world-adapter.cjs`. Set the launch base URL to `https://YOUR-SAME-ORIGIN-HOST/world/syndicates/?embed=1`. This compacts duplicate branding and hides the sample World Home button/footer while keeping the experience navigation and sandbox/connected indicator. The launch fragment is consumed as before; the embed query is retained.
 
-Do not label this an autonomous marketplace or real-money economy. Do not hide sandbox labels or award shared global skill from unrelated game receipts.
+The current server intentionally allows same-origin frames only. Mount through a same-origin gateway and route the existing `/api`, `/vendor`, scripts, styles and `/godot` URLs to this service. The app still uses root-relative assets/API URLs: changing only the iframe path is not enough. No cross-origin iframe trust or identity shortcut was introduced. Do not expose shared launch/delivery secrets to the client.
+
+This package includes the repaired Godot 4.5.1 export as an optional desktop view. Its game artwork has not been re-exported; the new default frontend is Three.js. Backend, receipt scopes, mission economy and identity protocol are unchanged.
+
+## Validation and release boundary
+
+Automated tests cover the 3D scene, building selection, mission completion, signed receipt verification, responsive layout, list navigation, existing permissions, crews, social duels and bounded hiring. The release remains a developer beta: test physical mobile GPU performance and the actual KULT World gateway/identity/receipt delivery before public launch. Docker is not available in the editing environment; validate the container on deployment.

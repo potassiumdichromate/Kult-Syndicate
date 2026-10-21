@@ -1,3 +1,20 @@
+# Release validation — 0.4.0-beta.1
+
+Executed October 17, 2026 against the updated browser frontend.
+
+- Three.js renderer boot, seven location buttons, selection highlight, camera controls: PASS.
+- Location → mission → three choices → resolution → signed receipt verification: PASS.
+- Desktop and 390px mobile layouts, list navigation to Crew: PASS.
+- Existing gameplay, permissions/emergency stop, Passport, crew and exchange browser suite: PASS.
+- Two-browser PvP and qualified hiring through exact mission to paid Supplies escrow: PASS.
+- Compact embed mode and simulated WebGL context loss to playable Canvas/list fallback: PASS.
+- Python backend/HTTP/adapter suite: 60 tests PASS.
+- Complete Godot web export validator: PASS. Existing compiled game preserved, not re-exported in this release.
+
+Browser: headless Chrome 151 using software WebGL in this environment. These tests do not establish a frame-rate target on physical mobile devices. Docker build and real KULT World identity handoff are not tested here.
+
+## Previous release validation (historical)
+
 # Release validation — 0.3.2-beta.1
 
 Executed October 3, 2026 against this release.

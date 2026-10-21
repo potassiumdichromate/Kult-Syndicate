@@ -15,9 +15,18 @@ class SocialTests(unittest.TestCase):
  def finish(self,s,mid=None,good=True):
   if mid is None:mid=self.cmd(s,'/api/missions',dict(kind='scout'))['missionId']
   for i in range(3):
-   m=self.state(s)['mission'];o=next(o for o in m['stage']['options'] if (o['id']==m['recommendation']['action'])==good);self.cmd(s,f'/api/missions/{mid}/choice',dict(step=i,choice=o['id']))
+   m=self.state(s)['mission'];o=next(o for o in m['stage']['options'] if (o['id']==['roof','verify','qualified'][i])==good);self.cmd(s,f'/api/missions/{mid}/choice',dict(step=i,choice=o['id']))
   return self.cmd(s,f'/api/missions/{mid}/resolve')['receipt']
  def offer(self):return self.cmd(self.a,'/api/hiring/create',dict(kind='scout',fee=3))['contractId']
+ def test_paid_scout_assignment_supplies_buyer_operation(self):
+  self.finish(self.b);contract=self.offer();mission=self.cmd(self.b,'/api/hiring/accept',dict(contractId=contract))['missionId']
+  source=self.finish(self.b,mission);lead=self.state(self.a)['operation']['lead']
+  self.assertEqual(lead['source'],'HIRED_SCOUT');self.assertEqual(lead['receiptId'],source['id']);self.assertEqual(lead['patrol'],source['context']['patrol'])
+  self.assertTrue(lead['contractReceiptId']);self.assertTrue(self.g.verify(source))
+  heist=self.cmd(self.a,'/api/missions',dict(kind='heist'))['missionId'];m=self.state(self.a)['mission']
+  self.assertEqual(m['context']['scoutReceipt'],source['id']);self.assertEqual(m['context']['scoutContractReceipt'],lead['contractReceiptId'])
+  self.assertEqual(m['context']['patrol'],source['context']['patrol'])
+  self.assertIsNone(self.state(self.c)['operation']['lead'])
  def expire(self,oid,kind):
   with self.g.tx() as c:
    o=self.g.object(c,oid,kind);o['deadline']=time.time()-1;self.g.save_object(c,o,kind);self.g.social_sweep(c)

@@ -43,8 +43,9 @@ be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8  index.audio.po
 - 60 existing Python tests passed.
 - Export validation passed, including both restored files.
 - Official template WASM and existing audio worklet matched byte-for-byte.
-- Browser smoke reached Godot 4.5.1 startup after HTML gameplay checks.
-  The browser exited before the game-ready signal; full rendering remains
-  unverified here. Run TEST_GODOT=yes npm run test:browser locally.
+- Browser smoke passed end to end on Chrome for Testing 151.0.7922.34:
+  gameplay, receipt verification, policy, crew, exchange, mobile layout, and
+  Godot 4.5.1 boot and visible canvas. The rendered isometric district was
+  visually inspected.
 - Docker is unavailable here. Its failing Python validation step was checked;
   a full container build was not performed.

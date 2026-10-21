@@ -1,5 +1,5 @@
 """Versioned, server-owned mission definitions. Never accept scores from clients."""
-VERSION = 'switchyard-1.0.0'
+VERSION = 'switchyard-1.1.0'
 # id, text, resource cost, tactical score. Costs are {supplies, intel}.
 def option(id, text, s=0, i=0, score=0):
     return dict(id=id, text=text, supplies=s, intel=i, score=score)
