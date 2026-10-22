@@ -1,6 +1,6 @@
 # Deploy the Switchyard inside KULT World
 
-This guide is authoritative for version 0.7.0. The service can run on its own origin or under `/world/syndicates/` on KULT World's origin. Same-origin embedding is supported; cross-origin iframes are intentionally rejected by the existing security policy.
+This guide is authoritative for version 0.7.1. The service can run on its own origin or under `/world/syndicates/` on KULT World's origin. Same-origin embedding is supported; cross-origin iframes are intentionally rejected by the existing security policy.
 
 ## 1. Prepare config and signing material
 
@@ -54,7 +54,7 @@ Check:
 curl -fsS http://127.0.0.1:8787/world/syndicates/api/health
 ```
 
-Expect `ok: true`, `version: "0.7.0-rc.1"`, `schema: 3`, `demo: false`, and `basePath: "/world/syndicates"` in the production configuration. Migration 003 adds the Agent alert column and retains existing missions and signed receipts.
+Expect `ok: true`, `version: "0.7.1-rc.1"`, `schema: 3`, `demo: false`, and `basePath: "/world/syndicates"` in the production configuration. Migration 003 adds the Agent alert column and retains existing missions and signed receipts.
 
 ## 5. Verify on the live staging host
 

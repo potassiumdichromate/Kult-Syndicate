@@ -1,10 +1,17 @@
-# KULT Syndicates 0.7.0 — dynamic Switchyard candidate
+# KULT Syndicates 0.7.1 — desktop experience update
 
 A playable Switchyard district for KULT World: Scout the canal, use verified intel at the depot, pool earned Supplies with a crew, and claim territory. The same Agent keeps a signed record of successes and misses. Live duels and bounded Agent hiring are included.
 
 **Start with [DEPLOY.md](DEPLOY.md).** It covers the included Docker configuration, new secret setup, the `/world/syndicates/` mount, and the KULT World adapter. This package is ready for staging deployment. The live KULT host and credentials must be configured and checked before public release.
 
-## What changed in 0.7.0
+## What changed in 0.7.1
+
+- A compact desktop command deck brings the 3D district and mission action above the fold on 1024×768 and 1366×768 screens.
+- Briefs show entry cost and the commit action before secondary explanation. Active missions automatically enter the focused map and decision view on PC; Exit focus remains available.
+- Compact map labels adapt to shorter desktop viewports, with a control to reveal all labels. Normal mouse-wheel motion scrolls the page; Ctrl/⌘ + wheel or touchpad pinch zooms the map.
+- A new browser check covers these desktop viewports plus 1920×1080, while the existing mobile and gameplay journeys still pass.
+
+### The underlying 0.7.0 dynamics remain
 
 - Situational clues alter the right move across Scout, Negotiation, Defense, and Heist. The field note offers rule-based context without revealing future events.
 - A hidden patrol remains server-side until a verified Scout report or resolved receipt reveals it. Active mission state exposes no secret seed, score, or future twist.
@@ -79,7 +86,7 @@ No token, monetary deposit, real-money reward or live financial settlement is in
 
 ## Verification
 
-See [dynamics and release evidence](docs/RELEASE_0.7.0.md), [simulation results](docs/SIMULATION_RESULTS.json), and [local HTTPS gateway results](docs/GATEWAY_TEST_RESULTS.json).
+See [desktop release notes](docs/RELEASE_0.7.1.md), [dynamics and release evidence](docs/RELEASE_0.7.0.md), [simulation results](docs/SIMULATION_RESULTS.json), and [local HTTPS gateway results](docs/GATEWAY_TEST_RESULTS.json).
 
 ```bash
 python3 -m unittest discover -s tests -q

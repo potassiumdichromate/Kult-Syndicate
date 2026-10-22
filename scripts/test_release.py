@@ -3,7 +3,7 @@
 import json, os, subprocess, sys, tempfile, time, urllib.request
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-suites=sys.argv[1:] or ['browser-world.cjs','browser-social.cjs','browser-dynamics.cjs','browser.cjs','browser-embed.cjs','browser-touch.cjs','browser-repair.cjs']
+suites=sys.argv[1:] or ['browser-world.cjs','browser-desktop.cjs','browser-social.cjs','browser-dynamics.cjs','browser.cjs','browser-embed.cjs','browser-touch.cjs','browser-repair.cjs']
 base=os.getenv('TEST_BASE_PATH','/world/syndicates').rstrip('/')
 for suite in suites:
  with tempfile.TemporaryDirectory(prefix='syndicates-release-') as data:

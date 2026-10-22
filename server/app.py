@@ -327,7 +327,7 @@ class Game(Social):
         except Exception:return False
 
 class Handler(BaseHTTPRequestHandler):
-    server_version='KULT-Syndicates/0.7.0'
+    server_version='KULT-Syndicates/0.7.1'
     def log_message(self,fmt,*args):pass # Do not log request tokens.
     def token(self):
         auth=self.headers.get('Authorization','')
@@ -386,7 +386,7 @@ class Handler(BaseHTTPRequestHandler):
                 if path=='/api/verify':
                     strict(body,['receipt']);return self.send(200,dict(valid=g.verify(body.get('receipt',{}))))
                 r=g.mutate(self.token(),self.headers.get('X-CSRF-Token',''),path,body,self.headers.get('X-Request-ID',''));return self.send(200,r,'' if path=='/api/logout' else None)
-            if path=='/api/health':return self.send(200,dict(ok=True,version='0.7.0-rc.1',schema=g.schema_version,demo=g.demo,storage='sqlite',basePath=self.server.base_path,godotExport=(ROOT/'web/godot/index.wasm').exists()))
+            if path=='/api/health':return self.send(200,dict(ok=True,version='0.7.1-rc.1',schema=g.schema_version,demo=g.demo,storage='sqlite',basePath=self.server.base_path,godotExport=(ROOT/'web/godot/index.wasm').exists()))
             if path=='/api/state':return self.send(200,g.state(self.token()))
             if path=='/api/public-key':return self.send(200,dict(algorithm='Ed25519',keyId=g.key_id,publicKey=b64(g.pub)))
             if path.startswith('/api/receipts/'):

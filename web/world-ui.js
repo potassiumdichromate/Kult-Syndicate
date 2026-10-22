@@ -7,11 +7,12 @@
  const mobile=matchMedia('(max-width: 850px)');
  const help=document.querySelector('#map-help-dialog');
  const focusButton=document.querySelector('#focus-world');
- function focusWorld(enabled){
+ let autoMissionId=null;
+ function focusWorld(enabled,behavior='smooth'){
   document.body.classList.toggle('focus-world',enabled);
   focusButton.setAttribute('aria-pressed',String(enabled));
   focusButton.textContent=enabled?'Exit focus':'Focus district';
-  if(enabled)document.querySelector('.game-layout').scrollIntoView({block:'start'});
+  if(enabled)document.querySelector('.game-layout').scrollIntoView({block:'start',behavior});
  }
  focusButton.onclick=()=>focusWorld(!document.body.classList.contains('focus-world'));
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!drawer.open&&!help.open)focusWorld(false);});
@@ -37,6 +38,10 @@
   const s=window.KultDistrictAPI?.getState();if(!s)return;
   const m=s.mission;
   document.querySelector('#mobile-agent-label').textContent=m?m.status==='PENDING'?'View mission result':`Continue · decision ${m.step+1} of 3`:'Open mission console';
+  if(!mobile.matches){
+   if(m&&m.id!==autoMissionId){autoMissionId=m.id;focusWorld(true,'instant')}
+   else if(!m&&autoMissionId){autoMissionId=null;if(document.body.classList.contains('focus-world')){focusWorld(false);window.scrollTo({top:0,behavior:'instant'})}}
+  }
  });
  window.KultWorldUI={openConsole,closeConsole};
 })();

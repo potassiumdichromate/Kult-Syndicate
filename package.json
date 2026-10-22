@@ -1,6 +1,6 @@
 {
   "name": "kult-syndicates-qa",
-  "version": "0.7.0-rc.1",
+  "version": "0.7.1-rc.1",
   "private": true,
   "scripts": {
     "test": "python3 -m unittest discover -s tests -v",
