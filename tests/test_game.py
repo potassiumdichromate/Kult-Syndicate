@@ -13,13 +13,15 @@ class GameTests(unittest.TestCase):
  def start(self,kind='scout',s=None):return self.cmd('/api/missions',{'kind':kind},s)['missionId']
  def finish(self,kind='scout',good=True,s=None):
   mid=self.start(kind,s)
-  paths={'scout':['roof','verify','qualified'],'negotiate':['bounded','limited','honor'],'defend':['canal','observe','archive'],'heist':['canal','reroute','extract']}
   for step in range(3):
-   m=self.state(s)['mission'];target=paths[kind][step]
-   if kind=='heist' and step==0 and m['context']['patrol']=='canal':target='gate'
+   m=self.state(s)['mission'];target=self.g.stage(self._raw_mission(mid))['_preferred']
+   if kind=='scout' and step==1 and good:target='verify'
+   if kind=='heist' and step==0 and target is None:target='canal'
    o=next(o for o in m['stage']['options'] if (o['id']==target)==good)
    self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':o['id']},s)
   return self.cmd(f'/api/missions/{mid}/resolve',s=s)['receipt']
+ def _raw_mission(self,mid):
+  with self.g.db() as c:return dict(c.execute('SELECT * FROM missions WHERE id=?',(mid,)).fetchone())
  def ticket(self,**kw):
   p=dict(sub='owner-1',agentId='arena-existing-1',name='ATHENA',jti=str(uuid.uuid4()),aud='kult-syndicates',exp=time.time()+60);p.update(kw);raw=b64(canonical(p));return raw+'.'+b64(hmac.new(self.g.secret.encode(),raw.encode(),hashlib.sha256).digest())
  def test_all_four_mission_loops(self):
@@ -33,7 +35,7 @@ class GameTests(unittest.TestCase):
   self.assertEqual(m['context']['scoutReceipt'],scout['id']);self.assertEqual(m['context']['patrol'],lead['patrol'])
   self.assertIn('signed Scout report',m['stage']['text']);self.assertNotIn('action',m['recommendation'])
   for step in range(3):
-   m=self.state()['mission'];choice=({'canal':'gate','gate':'canal'}[lead['patrol']] if step==0 else ['','reroute','extract'][step])
+   choice=self.g.stage(self._raw_mission(mid))['_preferred']
    self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':choice})
   heist=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertEqual(heist['outcome'],'SUCCESS')
   self.assertEqual(heist['context']['scoutReceipt'],scout['id']);self.assertTrue(self.g.verify(heist))
@@ -44,11 +46,11 @@ class GameTests(unittest.TestCase):
   self.start('heist');self.assertIsNone(self.state()['mission']['context']['scoutReceipt'])
  def test_territory_benefits_are_bound_to_mission_start(self):
   self.cmd('/api/crew/create',{'name':'Lantern Keepers'});self.cmd('/api/crew/deposit',{'amount':10})
-  self.finish('defend');self.finish('defend')
+  self.finish('defend');self.finish('negotiate')
   self.cmd('/api/crew/claim',{'block':'workshop'});self.assertEqual(self.state()['missions'][3]['cost'],2)
   self.cmd('/api/crew/claim',{'block':'garden'})
   mid=self.start('scout');self.assertTrue(self.state()['mission']['context']['gardenBenefit'])
-  for step,choice in enumerate(['roof','verify','qualified']):self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':choice})
+  for step,choice in enumerate(['roof' if 'sweeping' in self.state()['mission']['stage']['text'] else 'stairs','verify','qualified']):self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':choice})
   r=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertEqual(r['reward']['intel'],4)
   self.assertTrue(r['context']['gardenBenefit']);self.assertTrue(self.g.verify(r))
   self.start('heist');self.assertTrue(self.state()['mission']['context']['workshopBenefit'])
@@ -85,8 +87,9 @@ class GameTests(unittest.TestCase):
   with self.assertRaises(Problem):self.cmd(f'/api/missions/{mid}/choice',{'step':0,'choice':'roof'})
   self.assertEqual(self.state()['mission']['step'],0)
  def test_risk_gate(self):
-  p=self.state()['agent']['policy'];p.pop('version');p['allowRisk']=False;self.cmd('/api/policy',p);mid=self.start('negotiate')
-  with self.assertRaises(Problem):self.cmd(f'/api/missions/{mid}/choice',{'step':0,'choice':'vague'})
+  p=self.state()['agent']['policy'];p.pop('version');p['allowRisk']=False;self.cmd('/api/policy',p);mid=self.start('scout')
+  self.cmd(f'/api/missions/{mid}/choice',{'step':0,'choice':'roof'});self.cmd(f'/api/missions/{mid}/choice',{'step':1,'choice':'verify'})
+  with self.assertRaises(Problem):self.cmd(f'/api/missions/{mid}/choice',{'step':2,'choice':'certain'})
  def test_csrf_required(self):
   with self.assertRaises(Problem):self.g.mutate(self.s['token'],'bad','/api/resupply',{},str(uuid.uuid4()))
  def test_cross_owner_access_rejected(self):
@@ -100,7 +103,7 @@ class GameTests(unittest.TestCase):
    m=c.execute('SELECT seed,context FROM missions WHERE id=?',(mid,)).fetchone();context=json.loads(m['context']);context.pop('ruleVersion')
    c.execute('UPDATE missions SET context=?,commitment=? WHERE id=?',(json.dumps(context),digest(dict(seed=m['seed'],mission=mid,version='switchyard-1.0.0')),mid))
   for step,choice in enumerate(['roof','verify','qualified']):self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':choice})
-  r=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertEqual(r['contentVersion'],'switchyard-1.0.0');self.assertTrue(self.g.verify(r))
+  r=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertEqual(r['contentVersion'],'switchyard-1.0.0');self.assertEqual(r['reward']['supplies'],4);self.assertTrue(self.g.verify(r))
  def test_signed_launch_binds_same_existing_identity(self):
   first=self.g.login({'ticket':self.ticket()});self.assertEqual(first['agent']['id'],'arena-existing-1');r=self.finish(s=first);self.assertEqual(r['label'],'SERVICE_VERIFIED')
   second=self.g.login({'ticket':self.ticket()});self.assertEqual(self.state(second)['receipts'][0]['id'],r['id'])
@@ -119,6 +122,35 @@ class GameTests(unittest.TestCase):
  def test_daily_resupply_once(self):
   self.cmd('/api/resupply');a=self.state()['agent'];self.assertEqual(a['supplies'],24)
   with self.assertRaises(Problem):self.cmd('/api/resupply')
+ def test_hidden_patrol_and_future_twist_until_reveal(self):
+  mid=self.start('heist');m=self.state()['mission'];self.assertNotIn('patrol',m['context'])
+  self.assertEqual(set(m['context']['situation']),{'clues','startingAlert','hasLead'})
+  self.assertNotIn('seed',m);self.assertNotIn('score',m)
+  for step,choice in enumerate(['canal','reroute','extract']):self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':choice})
+  r=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertIn(r['context']['patrol'],('gate','canal'))
+  self.assertTrue(self.g.verify(r));self.assertTrue(any(e['type']=='assessment' for e in r['replay']))
+ def test_repeat_payout_and_influence_are_bounded(self):
+  first=self.finish('scout');second=self.finish('scout')
+  self.assertEqual(first['reward']['supplies'],3);self.assertEqual(second['reward']['supplies'],2)
+  self.assertEqual(second['reward']['influence'],0);self.assertEqual(second['context']['repeatToday'],1)
+ def test_alert_is_persistent_costs_to_clear_and_requires_finished_job(self):
+  self.finish('scout');mid=self.start('heist')
+  for step in range(3):
+   target=self.g.stage(self._raw_mission(mid))['_preferred'] if step<2 else 'greed'
+   self.cmd(f'/api/missions/{mid}/choice',{'step':step,'choice':target})
+  r=self.cmd(f'/api/missions/{mid}/resolve')['receipt'];self.assertEqual(r['context']['alertAfter'],2)
+  mid=self.start('defend');m=self.state()['mission'];self.assertEqual(m['context']['startingAlert'],2)
+  with self.assertRaises(Problem):self.cmd('/api/lay-low')
+  self.cmd(f'/api/missions/{mid}/withdraw');before=self.state()['agent']['supplies']
+  self.cmd('/api/lay-low');self.assertEqual(self.state()['agent']['supplies'],before-3);self.assertEqual(self.state()['agent']['alert'],0)
+  with self.assertRaises(Problem):self.cmd('/api/lay-low')
+ def test_second_contributing_crew_member_changes_workshop_cost(self):
+  self.cmd('/api/crew/create',{'name':'Lantern Keepers'});crew=self.state()['crew'];other=self.g.login({})
+  self.cmd('/api/crew/join',{'code':crew['code']},s=other)
+  self.finish('defend');self.finish('scout',s=other);self.finish('negotiate')
+  self.cmd('/api/crew/deposit',{'amount':5});self.cmd('/api/crew/claim',{'block':'workshop'})
+  self.assertTrue(self.state()['operation']['crewSynergy']);self.assertEqual(next(m for m in self.state()['missions'] if m['kind']=='heist')['cost'],1)
+  self.start('heist');self.assertTrue(self.state()['mission']['context']['crewSynergy'])
  def test_treasury_and_leader_authority(self):
   self.cmd('/api/crew/create',{'name':'Lantern Keepers'});crew=self.state()['crew'];other=self.g.login({});self.cmd('/api/crew/join',{'code':crew['code']},other)
   rid=str(uuid.uuid4());self.cmd('/api/crew/deposit',{'amount':5},rid=rid);self.cmd('/api/crew/deposit',{'amount':5},rid=rid);self.assertEqual(self.state()['crew']['treasury'],5)
@@ -126,7 +158,7 @@ class GameTests(unittest.TestCase):
  def test_claim_requires_real_influence(self):
   self.cmd('/api/crew/create',{'name':'Lantern Keepers'});self.cmd('/api/crew/deposit',{'amount':5})
   with self.assertRaises(Problem):self.cmd('/api/crew/claim',{'block':'garden'})
-  self.finish('defend');self.finish('defend');self.cmd('/api/crew/claim',{'block':'garden'});self.assertEqual(self.state()['crew']['treasury'],0)
+  self.finish('defend');self.finish('negotiate');self.cmd('/api/crew/claim',{'block':'garden'});self.assertEqual(self.state()['crew']['treasury'],0)
   with self.assertRaises(Problem):self.cmd('/api/crew/claim',{'block':'garden'})
  def test_delayed_resolution_cannot_be_skipped(self):
   self.g.delay=60;mid=self.start()

@@ -5,3 +5,6 @@ node_modules
 game/.godot
 __pycache__
 .git
+
+test-results
+*.zip

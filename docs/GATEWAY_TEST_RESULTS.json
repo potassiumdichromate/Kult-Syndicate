@@ -1,0 +1,12 @@
+{
+  "build": "0.7.0-rc.1",
+  "fixture": "local HTTPS KULT gateway; no live production endpoint contacted",
+  "signed_launch": true,
+  "launch_replay_rejected": true,
+  "secure_scoped_cookie": true,
+  "linked_scout_heist": true,
+  "identity_and_receipts_survive_server_restart": true,
+  "signed_callbacks_verified_by_world_adapter": 2,
+  "duplicate_delivery_deduplicated": true,
+  "passed": true
+}

@@ -1,0 +1,28 @@
+const {launch,baseURL}=require('./browser-helper.cjs');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await launch(),page=await browser.newPage({viewport:{width:1365,height:850}});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const read=()=>page.request.get(baseURL+'api/state').then(r=>r.json());
+ await page.goto(baseURL);await page.getByRole('button',{name:/Enter local sandbox/}).click();
+ await page.getByRole('button',{name:'Scout the canal'}).click();await page.getByRole('button',{name:/Commit to this job/}).click();
+ let m=(await read()).mission;await page.locator(`[data-choice="${m.stage.text.includes('sweeping')?'roof':'stairs'}"]`).click();
+ await page.locator('[data-choice="verify"]').click();await page.locator('[data-choice="qualified"]').click();
+ await page.getByRole('button',{name:/Return for resolution/}).click();await page.getByRole('button',{name:/Review the decisions/}).waitFor();
+ const lead=(await read()).operation.lead;assert.ok(lead);
+ await page.locator('#operation-cta').click();await page.getByRole('button',{name:/Commit to this job/}).click();
+ m=(await read()).mission;assert.equal(m.context.patrol,lead.patrol);await page.locator(`[data-choice="${lead.patrol==='canal'?'gate':'canal'}"]`).click();
+ m=(await read()).mission;await page.locator(`[data-choice="${m.stage.text.includes('drone guards')?'reroute':'force'}"]`).click();
+ await page.locator('[data-choice="greed"]').click();await page.getByRole('button',{name:/Return for resolution/}).click();
+ await page.getByRole('button',{name:/Review the decisions/}).waitFor();
+ const result=await read();assert.equal(result.agent.alert,2);
+ await page.waitForFunction(()=>document.querySelector('#map-wrap')?.dataset.alert==='2');
+ assert.equal(await page.locator('#alert').innerText(),'2 / 4');
+ await page.locator('#last-replay').click();await page.getByText(/alert 0 → 2/).waitFor();await page.getByRole('button',{name:'Close replay'}).click();
+ const supplies=result.agent.supplies;
+ await page.locator('#lay-low').click();await page.getByRole('button',{name:'Lay low',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('#alert')?.textContent==='0 / 4');
+ assert.equal((await read()).agent.supplies,supplies-3);
+ assert.deepEqual(errors,[]);await browser.close();
+ console.log('PASS: Scout lead, changing Heist clue, greed raises visible district alert, signed replay, Supply-costly lay-low');
+})().catch(e=>{console.error(e);process.exit(1)});

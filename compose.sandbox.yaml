@@ -1,0 +1,12 @@
+services:
+  syndicates:
+    build: .
+    ports: ["127.0.0.1:8787:8787"]
+    environment:
+      SYNDICATES_DEMO: "yes"
+      BASE_PATH: /world/syndicates
+      PUBLIC_ORIGIN: http://localhost:8787
+    volumes: ["syndicates-sandbox:/data"]
+    restart: unless-stopped
+volumes:
+  syndicates-sandbox:

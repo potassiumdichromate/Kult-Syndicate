@@ -17,7 +17,8 @@ class HTTPTests(unittest.TestCase):
  def test_http_full_loop_and_restart_cookie(self):
   self.assertEqual(self.call('/api/session',{})[0],200);status,state=self.call('/api/state');self.assertEqual(status,200);aid=state['agent']['id']
   status,r=self.call('/api/missions',{'kind':'scout'});self.assertEqual(status,200);mid=r['missionId']
-  for i,ch in enumerate(['roof','verify','qualified']):self.assertEqual(self.call(f'/api/missions/{mid}/choice',{'step':i,'choice':ch})[0],200)
+  first=self.call('/api/state')[1]['mission']['stage']['text'];choices=['roof' if 'sweeping' in first else 'stairs','verify','qualified']
+  for i,ch in enumerate(choices):self.assertEqual(self.call(f'/api/missions/{mid}/choice',{'step':i,'choice':ch})[0],200)
   status,r=self.call(f'/api/missions/{mid}/resolve',{});self.assertEqual(status,200);self.assertEqual(r['receipt']['outcome'],'SUCCESS')
   self.assertEqual(self.call('/api/verify',{'receipt':r['receipt']})[1]['valid'],True);self.assertEqual(self.call('/api/state')[1]['agent']['id'],aid)
   self.assertEqual(self.call('/api/receipts/'+r['receipt']['id'])[0],200)

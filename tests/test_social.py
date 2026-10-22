@@ -15,7 +15,7 @@ class SocialTests(unittest.TestCase):
  def finish(self,s,mid=None,good=True):
   if mid is None:mid=self.cmd(s,'/api/missions',dict(kind='scout'))['missionId']
   for i in range(3):
-   m=self.state(s)['mission'];o=next(o for o in m['stage']['options'] if (o['id']==['roof','verify','qualified'][i])==good);self.cmd(s,f'/api/missions/{mid}/choice',dict(step=i,choice=o['id']))
+   m=self.state(s)['mission'];preferred=('roof' if 'sweeping' in m['stage']['text'] else 'stairs') if i==0 else ['','verify','qualified'][i];o=next(o for o in m['stage']['options'] if (o['id']==preferred)==good);self.cmd(s,f'/api/missions/{mid}/choice',dict(step=i,choice=o['id']))
   return self.cmd(s,f'/api/missions/{mid}/resolve')['receipt']
  def offer(self):return self.cmd(self.a,'/api/hiring/create',dict(kind='scout',fee=3))['contractId']
  def test_paid_scout_assignment_supplies_buyer_operation(self):

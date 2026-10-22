@@ -4,6 +4,7 @@ services:
     ports: ["127.0.0.1:8787:8787"]
     environment:
       SYNDICATES_DEMO: "no"
+      BASE_PATH: "${BASE_PATH:-/world/syndicates}"
       PUBLIC_ORIGIN: "${PUBLIC_ORIGIN:?Set the HTTPS Syndicates origin}"
       KULT_SYNDICATES_LAUNCH_SECRET_FILE: /run/secrets/syndicates_launch
       SYNDICATES_SIGNING_KEY_FILE: /run/secrets/syndicates_signing
@@ -12,6 +13,8 @@ services:
     restart: unless-stopped
   receipt-worker:
     build: .
+    healthcheck:
+      disable: true
     command: ["python", "server/deliver.py"]
     environment:
       SYNDICATES_DEMO: "no"

@@ -1,3 +1,5 @@
+> **0.6 deployment note:** Follow [DEPLOY.md](../DEPLOY.md) for current setup, mount paths, packaged export builds and release gates. API paths below are logical service routes beneath `BASE_PATH`.
+
 # Syndicates staging operations — 0.3.2 beta
 
 This release runs one SQLite writer service and one independent receipt delivery worker. The named `syndicates-data` volume stores game state, signed receipts, commands and the durable delivery outbox. No browser request waits for the World callback. The service does not post to social networks or hold wallets.
@@ -28,7 +30,7 @@ This is file-backed key custody, **not HSM signing**. An HSM/KMS integration wou
 
 1. Supply the three secret files and real HTTPS origins in `.env`.
 2. Back up the existing SQLite volume and signing key.
-3. Run `bash scripts/build_container.sh` to export Godot and build the checked image.
-4. Run `docker compose up -d`; inspect `/api/health` for `schema: 2`.
+3. Run `bash scripts/build_container.sh` to validate the included Godot export and build the checked image. Set `REBUILD_GODOT=yes` only when changing that client.
+4. Run `docker compose up -d`; inspect `/api/health` for `schema: 3`.
 5. Verify one production-mode launch ticket binds the existing Arena Agent, resolve a mission, observe one signed callback and its idempotent World ingestion.
 6. Check pending outbox depth, failure backoff, physical-phone behavior and backup restore before opening the public door.

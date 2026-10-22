@@ -1,27 +1,48 @@
-# KULT Syndicates — 0.5.1 World operation beta
+# KULT Syndicates 0.7.0 — dynamic Switchyard candidate
 
-The Switchyard has a connected Scout → Heist → crew territory journey. A verified Scout report carries patrol intelligence into the next depot Heist for 24 hours. A paid, completed assignment from a qualified player Agent can provide the same lead to its buyer. The Copper workshop reduces Heist entry by one Supply; the Rooftop garden adds one Intel to a successful Scout. The server records the source Scout, hired contract if any, and territory effect in signed receipts. The district shows active intel, patrol, crew claims and progress. The 0.5.1 map update adds a next-stop directive, distinct building landmarks, camera focus and route feedback. See [0.5.1 release notes](docs/RELEASE_0.5.1.md).
+A playable Switchyard district for KULT World: Scout the canal, use verified intel at the depot, pool earned Supplies with a crew, and claim territory. The same Agent keeps a signed record of successes and misses. Live duels and bounded Agent hiring are included.
 
-The default view uses bundled Three.js. The optional Godot export remains from the previous release and does **not** show the new operation UI; use the default browser view for this experience. See [UX handoff](docs/UX_HANDOFF.md) for same-origin World embedding.
+**Start with [DEPLOY.md](DEPLOY.md).** It covers the included Docker configuration, new secret setup, the `/world/syndicates/` mount, and the KULT World adapter. This package is ready for staging deployment. The live KULT host and credentials must be configured and checked before public release.
 
-An independent isometric game inside KULT World. Bring the same Agent, direct its decisions, challenge a real player, hire proven work, and keep a signed record of successes and misses.
+## What changed in 0.7.0
 
-## This build includes
+- Situational clues alter the right move across Scout, Negotiation, Defense, and Heist. The field note offers rule-based context without revealing future events.
+- A hidden patrol remains server-side until a verified Scout report or resolved receipt reveals it. Active mission state exposes no secret seed, score, or future twist.
+- District alert persists between missions. Greed during a Heist raises it; a clean Defense, a daily resupply, or a once-daily 3-Supply lay-low action lowers it. Alert 2+ increases opposition resistance.
+- Same-day repeated missions have reduced Supply payout and grant no new Influence. First-run rewards are lower to slow resource inflation.
+- Two contributing crew members improve the Workshop discount or Garden Intel bonus. Signed replays show score, resistance, and alert transition.
 
-- Bundled Three.js browser district, optional earlier Godot 4.5.1 Web export and editable Godot source.
-- Responsive HTML/Canvas shell and complete phone list fallback.
-- Four NPC mission types: scout, negotiate, defend and heist.
-- One linked district operation. Scout intel changes the next Heist; paid Scout work can be used by the buyer; crew territory grants bounded mission effects. Rule-based field notes show tradeoffs without marking a guaranteed winning option.
-- **Live PvP:** three simultaneous-choice tactical rounds against another real player. Hidden choices, round deadlines, forfeits, draws and signed results. This is turn-based live tactical play, not real-time action combat.
-- **A2A hiring:** owner-directed assignments between in-game Agents. Domain qualification, a new bound mission, locked Supplies, success-only payment and automatic refunds. External autonomous agent marketplaces and cash payments are not connected.
-- Permission cards, emergency stop, same-Agent signed World launch, crew treasury, site leases, durable receipt delivery and independent signature verification.
-- Exchange UI with mobile layouts, explicit confirmations, live status, empty states, mission resume and escrow history.
+The first guided operation remains Scout → linked Heist → crew, followed by repeat decisions. These mechanics are a local game release, not a live Mind, 0G, or OKX integration.
 
-No token, entry stake, paid rank, fabricated players or real-money reward. PvP and hiring records never increase Arena wins or trading credentials.
+## Presentation and platform
 
-## Run immediately
+- Seven distinct isometric landmarks, clear next-stop guidance, visible route movement, smooth camera focus, pinch zoom, keyboard controls, adjustable labels and a low graphics mode.
+- Labels avoid other labels and the map's interface. The board fits narrow screens more cleanly.
+- A native mobile mission drawer keeps decisions in view and returns the player to the district. Embedded mode retains the experience's navigation.
+- All browser assets, API calls, session cookies and the optional Godot bridge support an isolated `/world/syndicates/` mount. KULT's root API routes remain available to its host.
+- Authenticated Agents have separate request budgets behind a shared World proxy. Invalid tokens do not create independent budgets.
+- The deployment build uses the included Godot export; installing Godot is only necessary if changing that legacy client. The default experience is Three.js. The legacy client is hidden unless `?legacy=1` is supplied.
 
-Python 3.11+ is required. The compiled Web game is included; a Godot installation is not needed to play.
+## Packaging
+
+The previous distributed ZIP was truncated. This replacement is rebuilt from source and checked after saving. Extract the entire ZIP before starting. Run `python VERIFY_BUILD.py` to check all delivered files. Opening `web/index.html` directly does not run the backend.
+
+The UX now includes Focus district mode, larger mobile touch targets, more legible labels, keyboard focus indicators, and a sticky desktop mission console.
+
+## Quick start (Windows, macOS or Linux)
+
+Install Python 3.11 or newer. Open a terminal in the extracted folder, then:
+
+```bash
+python -m pip install -r requirements.txt
+python START_LOCAL.py
+```
+
+On systems where Python is named `python3`, use that instead. Open the printed localhost URL. For deployment, use DEPLOY.md; the launcher is intentionally a local sandbox.
+
+## Run locally
+
+Python 3.11+:
 
 ```bash
 python3 -m venv .venv
@@ -30,46 +51,48 @@ pip install -r requirements.txt
 bash scripts/run_demo.sh
 ```
 
-Open **http://localhost:8787**, enter the labelled sandbox, and use the default district view for the connected operation. Use two separate browser profiles/private contexts to test real PvP and hiring. Two tabs in one profile share an Agent.
-
-1. Scout the canal. Verify both beacons and report uncertainty; the signed result reveals a patrol for 24 hours.
-2. Enter the depot Heist using that report. Its receipt names the Scout receipt that informed the route.
-3. Found a crew and contribute earned Supplies. When the crew has 4 seasonal Influence and 5 treasury Supplies, claim a place for 24 hours. Workshop lowers future Heist entry; garden adds Intel on successful Scout results.
-4. For the hired route, enable hiring in two profiles. The qualified provider completes a paid Scout assignment. The buyer can then use that paid Scout report at the depot. Failed, cancelled and expired contracts do not create a lead.
-5. Inspect both Passports, replay and export the signed receipts. PvP remains available under Play & hire.
-
-The local sandbox creates separate demo Agents. It does not import or merge Arena history.
-
-## Connect the real World
-
-Follow `docs/IMPLEMENTATION.md` and `docs/OPERATIONS.md`. Use the supplied server-only adapter to issue a short-lived launch ticket for the authenticated existing Agent, pin the service's signing public key, and ingest signed callbacks idempotently. Configure TLS, mounted secret files and a persistent volume using `.env.example` and `compose.yaml`.
-
-**Release status: local beta for staging.** The 65 backend and adapter tests pass, and the live HTTP sandbox completed Scout → Heist → crew workshop with independently verified receipts. The updated Three.js district still needs a real browser visual pass, mobile GPU checks, and World launch/delivery testing before public release. Production World credentials, a public deployment and backup/load checks remain with the deployment team. `docs/VALIDATION.md` records earlier release checks; see `docs/RELEASE_0.5.1.md` for this build's validation.
-
-## Rebuild / test
+Open `http://localhost:8787/`. For the mounted experience:
 
 ```bash
-python3 -m unittest discover -s tests -v
-# Godot 4.5.1 + matching templates, only when changing the game:
-bash scripts/export_web.sh
-# Browser QA against the running sandbox:
-npm install
-npx playwright install chromium
-TEST_GODOT=yes npm run test:browser
-npm run test:social
+BASE_PATH=/world/syndicates bash scripts/run_demo.sh
 ```
 
-For a fresh source checkout, use `bash scripts/build_container.sh` after configuring `.env`. It exports Godot first, validates the generated HTML, scripts, WASM and PCK paths, then builds the Docker Compose images. `docker compose up -d` starts them. A direct Docker build fails with a clear error if the generated export is missing. The full downloadable ZIP already contains the compiled export; `web/godot` is intentionally ignored by Git, so the export step is essential after cloning source.
+Open `http://localhost:8787/world/syndicates/`. Use separate browser profiles for distinct demo Agents; tabs in one profile share a session.
 
-The `.py`, `.gd`, `.js`, `.html` and `.md` files in this archive are plain UTF-8 text. The `.wasm` and `.pck` files are compiled game data and will look garbled in a text preview. A separate source-only ZIP omits those binaries for easier review.
+With Docker, the labelled sandbox requires no production secrets:
 
-`CHROMIUM_PATH` can select an installed Chrome/Chromium executable. `scripts/secure_web_export.py` externalizes the generated bootstrap so the exported game works with the strict script security policy. The export is single-threaded; this preset does not require SharedArrayBuffer/COOP/COEP.
+```bash
+docker compose -f compose.sandbox.yaml up -d --build
+```
 
-## Key files
+Open `http://localhost:8787/world/syndicates/`. The port binds to localhost; use an HTTPS gateway for remote access.
 
-- `server/app.py`, `server/social.py`: authoritative game rules, identity, transactions and social loops.
-- `game/`: Godot project. `web/godot/`: compiled playable export.
-- `web/`: responsive shell, map, live exchange, receipts and permissions.
-- `integration/world-adapter.cjs`, `server/deliver.py`: World integration and durable delivery.
-- `docs/IMPLEMENTATION.md`: deployment contract and release gates.
-- `docs/SOCIAL_RULES.md`: exact PvP and hiring rules.
+## Play the connected operation
+
+1. Enter Canal Watch and complete a Scout. A verified report carries patrol intelligence into the next Heist for 24 hours.
+2. Review the depot mission. The Heist uses and records its source Scout receipt.
+3. Create a crew, contribute 5 earned Supplies, and claim Workshop once the crew has 4 seasonal Influence. It reduces the next Heist entry cost by one Supply, or two when two members have earned Influence.
+4. In Play & hire, a qualified Agent can complete a paid Scout assignment for another owner. The buyer can use that successful, paid report. Payment is fictional Supplies.
+5. Inspect Passport to replay, export and verify the record, including misses and withdrawals.
+
+No token, monetary deposit, real-money reward or live financial settlement is introduced. Agent field notes are rule-based guidance. External autonomous models, OKX and 0G are not added by this release. The signed World adapter is the integration boundary. This version binds one Agent per owner and does not merge or transfer histories.
+
+## Verification
+
+See [dynamics and release evidence](docs/RELEASE_0.7.0.md), [simulation results](docs/SIMULATION_RESULTS.json), and [local HTTPS gateway results](docs/GATEWAY_TEST_RESULTS.json).
+
+```bash
+python3 -m unittest discover -s tests -q
+python3 scripts/check_web_export.py
+python3 scripts/simulate_release.py
+python3 scripts/test_world_gateway.py
+npm ci
+npx playwright install chromium
+npm run test:release
+```
+
+`test:release` starts isolated local servers and databases for browser journeys, using the actual API and Three.js. `CHROMIUM_PATH` can point to another installed Chromium. `TEST_BASE_PATH` selects the mount; it defaults to `/world/syndicates`. The optional `TEST_GODOT=yes` browser check boots the older Godot client.
+
+## Deployment boundaries
+
+The game rules, persistence, local HTTPS identity/callback contract, desktop WebGL, mobile viewport flow, hiring, duels and fallback navigation have been exercised locally. Docker image execution, the actual KULT host, physical mobile GPU performance and production concurrency/load were not verified in this environment. Keep a persistent data volume and the same signing key on upgrades. Run one game service and one receipt worker; the SQLite deployment is not designed for writable replicas.

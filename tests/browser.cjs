@@ -1,18 +1,19 @@
 // End-to-end smoke test against the real demo server. Start it before running this file.
-const {chromium}=require('playwright');
+const {launch,baseURL}=require('./browser-helper.cjs');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 (async()=>{
-  const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader'],...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
+  const browser=await launch();
   const page=await browser.newPage({viewport:{width:1440,height:1000}});
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://localhost:8787');
+  await page.goto(baseURL);
   await page.getByRole('button',{name:/Enter local sandbox/}).click();
   await page.getByRole('button',{name:'Scout the canal'}).click();
   await page.getByText('MISSION BRIEF').waitFor();
   assert.equal(await page.getByText('1 Supplies',{exact:false}).count()>0,true);
   await page.getByRole('button',{name:'Commit to this job'}).click();
-  await page.getByRole('button',{name:/Climb to the rooftop/}).click();
+  const first=await page.locator('#mission-panel > p').nth(1).innerText();
+  await page.locator(`[data-choice="${first.includes('sweeping')?'roof':'stairs'}"]`).click();
   await page.getByRole('button',{name:/Cross-check both beacons/}).click();
   await page.getByRole('button',{name:/Report the route with/}).click();
   await page.getByRole('button',{name:'Return for resolution'}).click({timeout:15000});
@@ -45,6 +46,7 @@ const fs=require('node:fs');
   assert.deepEqual(errors,[]);
   if(process.env.TEST_GODOT==='yes'){
     await page.setViewportSize({width:1440,height:1000});
+    await page.goto(baseURL+'?legacy=1');
     await page.getByRole('button',{name:'Godot game',exact:true}).click();
     await page.frameLocator('#godot-frame').locator('body[data-syndicates-ready="true"]').waitFor({state:'attached',timeout:45000});
     await page.frameLocator('#godot-frame').locator('#canvas').waitFor({state:'visible'});

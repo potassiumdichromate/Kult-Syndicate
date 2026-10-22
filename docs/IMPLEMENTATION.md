@@ -1,3 +1,5 @@
+> **0.6 deployment note:** Follow [DEPLOY.md](../DEPLOY.md) for current setup, mount paths, packaged export builds and release gates. API paths below are logical service routes beneath `BASE_PATH`.
+
 # Developer handoff
 
 ## Product contract

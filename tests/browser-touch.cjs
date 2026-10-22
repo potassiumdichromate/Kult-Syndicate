@@ -1,0 +1,21 @@
+const {launch,baseURL}=require('./browser-helper.cjs');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await launch();
+ const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+ const page=await context.newPage();
+ await page.goto(baseURL);await page.getByRole('button',{name:/Enter local sandbox/}).click();
+ await page.locator('body.three-ready').waitFor();
+ const canvas=page.locator('.world-canvas');await canvas.scrollIntoViewIfNeeded();
+ await page.locator('.place-pin').first().waitFor();
+ const box=await canvas.boundingBox(),cdp=await context.newCDPSession(page);
+ const before=await page.locator('.place-pin').evaluateAll(xs=>xs.map(x=>x.style.cssText).join('|'));
+ const cx=box.x+box.width/2,cy=Math.min(box.y+box.height/2,650);
+ const points=d=>[{x:cx-d,y:cy,id:1},{x:cx+d,y:cy,id:2}];
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points(25)});
+ for(const d of [35,45,60,75])await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points(d)});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await page.waitForFunction(old=>[...document.querySelectorAll('.place-pin')].map(x=>x.style.cssText).join('|')!==old,before);
+ assert.equal(await page.locator('body.three-ready').count(),1);
+ await browser.close();console.log('PASS: native two-finger touch input changes projected district camera');
+})().catch(e=>{console.error(e);process.exit(1)});

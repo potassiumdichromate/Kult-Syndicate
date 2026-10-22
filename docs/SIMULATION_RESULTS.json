@@ -1,0 +1,52 @@
+{
+  "build": "0.7.0-rc.1",
+  "run_at": "2026-10-22T04:55:31.056530+00:00",
+  "kind": "scripted choices on the real rule engine; not observed users, retention, autonomous AI, or investment outcomes",
+  "seed": 62021,
+  "agents": 90,
+  "signed_receipts_verified": 450,
+  "styles": {
+    "reader": {
+      "missions_started": 150,
+      "SUCCESS": 150,
+      "supply_rewards": 570,
+      "influence_rewards": 240,
+      "alert_peak": 0,
+      "repeated": 30,
+      "agents": 30,
+      "average_final_supplies": 20.63,
+      "average_final_alert": 0.0,
+      "success_rate": 1.0
+    },
+    "opportunist": {
+      "missions_started": 150,
+      "SUCCESS": 106,
+      "supply_rewards": 508,
+      "influence_rewards": 163,
+      "alert_peak": 4,
+      "cache_attempts": 60,
+      "repeated": 30,
+      "MISS": 44,
+      "agents": 30,
+      "average_final_supplies": 17.53,
+      "average_final_alert": 3.13,
+      "success_rate": 0.707
+    },
+    "random": {
+      "missions_started": 150,
+      "SUCCESS": 46,
+      "supply_rewards": 305,
+      "influence_rewards": 73,
+      "alert_peak": 4,
+      "MISS": 104,
+      "repeated": 30,
+      "cache_attempts": 28,
+      "agents": 30,
+      "average_final_supplies": 11.03,
+      "average_final_alert": 3.1,
+      "success_rate": 0.307
+    }
+  },
+  "passed": true,
+  "elapsed_seconds": 25.4
+}

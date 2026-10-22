@@ -14,7 +14,8 @@ class AdapterTests(unittest.TestCase):
    g=Game(tmp,demo=False,secret=secret,delay=0);s=g.login({'ticket':ticket})
    def cmd(path,body={}):return g.mutate(s['token'],s['csrf'],path,body,str(uuid.uuid4()))
    mid=cmd('/api/missions',{'kind':'scout'})['missionId']
-   for i,c in enumerate(['roof','verify','qualified']):cmd(f'/api/missions/{mid}/choice',{'step':i,'choice':c})
+   first=g.state(s['token'])['mission']['stage']['text']
+   for i,c in enumerate(['roof' if 'sweeping' in first else 'stairs','verify','qualified']):cmd(f'/api/missions/{mid}/choice',{'step':i,'choice':c})
    r=cmd(f'/api/missions/{mid}/resolve')['receipt'];ts=str(int(time.time()));sig=hmac.new(callback.encode(),(ts+'\n'+hashlib.sha256(canonical(r)).hexdigest()).encode(),hashlib.sha256).hexdigest()
    js="""const fs=require('node:fs'),assert=require('node:assert/strict'),a=require('./integration/world-adapter.cjs');
 const x=JSON.parse(fs.readFileSync(0,'utf8'));const r=a.verifyDelivery(x.receipt,x.headers,x.config);let owner={agent:{id:'arena-original',missionWins:9}};

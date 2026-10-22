@@ -10,5 +10,5 @@ RUN mkdir /data && chown kult:kult /data
 USER kult
 ENV HOST=0.0.0.0 PORT=8787 SYNDICATES_DATA=/data SYNDICATES_DEMO=no
 EXPOSE 8787
-HEALTHCHECK --interval=30s --timeout=3s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/api/health')" || exit 1
+HEALTHCHECK --interval=30s --timeout=3s CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:8787'+os.getenv('BASE_PATH','').rstrip('/')+'/api/health')" || exit 1
 CMD ["python","server/app.py"]

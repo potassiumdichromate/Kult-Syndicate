@@ -22,6 +22,7 @@ function verifyDelivery(body,headers,{secret,publicKey}){
  const scopes={
   'switchyard-1.0.0':{type:'NPC',domains:['reconnaissance','negotiation','defense','operations'],outcomes:['SUCCESS','MISS','WITHDRAWN']},
   'switchyard-1.1.0':{type:'NPC',domains:['reconnaissance','negotiation','defense','operations'],outcomes:['SUCCESS','MISS','WITHDRAWN']},
+  'switchyard-2.0.0':{type:'NPC',domains:['reconnaissance','negotiation','defense','operations'],outcomes:['SUCCESS','MISS','WITHDRAWN']},
   'switchyard-pvp-1.0.0':{type:'PLAYER',domains:['syndicates_tactics'],outcomes:['SUCCESS','MISS','DRAW','VOID']},
   'switchyard-a2a-1.0.0':{type:'AGENT',domains:['syndicates_services'],outcomes:['SUCCESS','MISS','VOID']}
  };
