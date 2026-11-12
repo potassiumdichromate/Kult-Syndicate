@@ -11,7 +11,7 @@ class MountTests(unittest.TestCase):
  def test_isolated_paths_and_redirect(self):
   status,h,body=self.request('/world/syndicates?embed=1');self.assertEqual(status,308);self.assertEqual(h['Location'],'/world/syndicates/?embed=1')
   for route in ['/api/state','/api/health','/app.js','/world/syndicates-other/api/health']:self.assertEqual(self.request(route)[0],404)
-  for route in ['','app.js','district3d.js','world-ui.js','district-ux.css','vendor/three.module.js','godot/index.js','godot-bridge.js']:self.assertEqual(self.request('/world/syndicates/'+route)[0],200)
+  for route in ['','app.js','world.js','shell.js','switchyard.css','vendor/three.module.js','godot/index.js','godot-bridge.js']:self.assertEqual(self.request('/world/syndicates/'+route)[0],200)
  def test_cookie_scope_and_mission(self):
   status,h,b=self.request('/world/syndicates/api/session',{});self.assertEqual(status,200);self.assertIn('Path=/world/syndicates;',h['Set-Cookie']);s=json.loads(b);headers={'Cookie':h['Set-Cookie'].split(';')[0],'X-CSRF-Token':s['csrf']}
   def post(path,body):
@@ -31,4 +31,4 @@ class MountTests(unittest.TestCase):
   self.assertEqual(self.request('/world/syndicates/api/state',headers={'Cookie':'syndicates_session='+second['token']})[0],200)
   self.server.limits['ip:127.0.0.1'].extend([time.time()]*240)
   self.assertEqual(self.request('/world/syndicates/api/state',headers={'Cookie':'syndicates_session=invalid'})[0],429)
-  self.assertEqual(self.request('/world/syndicates/district3d.js')[0],200)
+  self.assertEqual(self.request('/world/syndicates/world.js')[0],200)

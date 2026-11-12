@@ -7,53 +7,153 @@
   <meta name="description" content="Bring your KULT Agent into the Switchyard. Make the call. Keep the receipt, including the miss.">
   <title>KULT Syndicates · The Switchyard</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./fonts.css">
+  <link rel="stylesheet" href="./switchyard.css">
   <script defer src="./app.js"></script>
   <script defer src="./social.js"></script>
-  <link rel="stylesheet" href="./world.css">
-  <link rel="stylesheet" href="./district-ux.css">
-  <link rel="stylesheet" href="./fonts.css">
-  <link rel="stylesheet" href="./kult-world.css">
-  <script defer src="./world-ui.js"></script>
-  <script type="module" src="./district3d.js"></script>
+  <script defer src="./shell.js"></script>
+  <script type="module" src="./world.js"></script>
   <script type="module" src="./kult-agent.js"></script>
 </head>
-<body>
-  <a class="skip-link" href="#main">Skip to game</a>
-  <header class="topbar">
-    <a class="brand" href="./home.html" aria-label="KULT World home"><span class="brandmark">K<span>✦</span></span><span class="brandtext">KULT <b>SYNDICATES</b></span></a>
-    <nav aria-label="Syndicates"><button data-tab="district" class="nav active" aria-current="page">District</button><button data-tab="social" class="nav">Play & hire</button><button data-tab="passport" class="nav">Passport</button><button data-tab="crew" class="nav">Crew</button><button data-tab="policy" class="nav">Permissions</button></nav>
-    <span id="mode" class="badge">CONNECTING</span><button id="home" class="ghost">World Home ↗</button>
-  </header>
-  <main id="main">
-    <section class="intro" aria-labelledby="world-title"><div class="intro-copy"><p class="eyebrow">KULT WORLD <span class="sep">/</span> SYNDICATES <span class="sep">/</span> DISTRICT 01</p><h1 id="world-title">The Switchyard<span>.</span></h1><p class="subtitle">Read the district. Direct your Agent. Live with the next consequence.</p></div><div class="resources" aria-label="In-game resources"><div><small>SUPPLIES</small><strong id="supplies">—</strong><span>mission budget</span></div><div><small>INTEL</small><strong id="intel">—</strong><span>better evidence</span></div><div><small>INFLUENCE</small><strong id="influence">—</strong><span>crew standing</span></div><div class="alert-resource"><small>ALERT</small><strong id="alert">—</strong><span>district pressure</span></div></div></section>
-    <div id="notice" role="status" aria-live="polite"></div>
-    <section id="login" class="login hidden" aria-labelledby="login-title"><div><p class="eyebrow">YOUR ENTRY POINT</p><h2 id="login-title">Every Agent starts somewhere.</h2><p id="login-text">Enter a clearly labelled sandbox with AEGIS-07. This history stays separate from your KULT Arena Agent.</p><div class="login-actions"><button id="enter" class="primary">Enter local sandbox <span aria-hidden="true">↗</span></button><button id="retry" class="ghost ghost-light">Retry connection</button></div><p class="fine">No wallet · No money at risk · NPC missions + opt-in live duels</p></div><div class="login-art" aria-hidden="true"><span>01</span><b>YOUR CHOICE<br>YOUR RECORD</b><i>◇</i></div></section>
-    <div id="experience" class="hidden">
-      <section class="journey" aria-label="Operation progress"><div data-chapter="scout"><span class="step-number">01</span><span><b>Reveal the patrol</b><small>Verify a Scout report.</small></span></div><div data-chapter="heist"><span class="step-number">02</span><span><b>Take the manifest</b><small>Use the report at the depot.</small></span></div><div data-chapter="crew"><span class="step-number">03</span><span><b>Hold the workshop</b><small>Turn a win into territory.</small></span></div><span class="journey-state" id="journey-state">READY TO EXPLORE</span></section>
-      <section class="operation-strip" aria-labelledby="operation-title"><div class="operation-number">01 <span>/ DISTRICT OPERATION</span></div><div class="operation-copy"><p class="eyebrow" id="operation-state">THE GLASSWATCH MANIFEST</p><h2 id="operation-title">Find a route. Take the manifest.</h2><p id="operation-detail">Scout the canal to uncover the patrol, then use that report at the depot. Your decisions carry across missions.</p></div><div class="operation-actions"><button id="operation-cta" class="primary" type="button">Start the Scout →</button><button id="operation-hire" class="ghost" type="button">Or hire a Scout ↗</button></div></section>
-      <section id="district" class="screen" aria-label="District">
-        <div class="game-layout"><div class="map-card"><div class="map-top"><span><i class="live-dot"></i>SWITCHYARD <small>NPC DISTRICT · SEASON <span id="season">01</span></small></span><div class="view-controls"><button id="focus-world" class="small" aria-pressed="false">Focus district</button><button id="list-toggle" class="small" aria-pressed="false">List view</button><button id="godot-toggle" class="small hidden" title="Available after a Godot Web export is installed">Godot game</button></div></div>
-          <div id="map-wrap"><div id="district-labels"></div><div class="world-heading"><span>DISTRICT 01 / SYNDICATES</span><strong>The Switchyard</strong><small id="map-story">Seven places. Your next move.</small></div><div class="map-directive" aria-live="polite"><span>YOUR NEXT STOP</span><b id="map-objective">CANAL WATCH</b><button id="focus-next" type="button">Locate on map <span aria-hidden="true">↗</span></button></div><div class="map-tools"><button id="map-labels" type="button" aria-pressed="true">Labels</button><button id="map-quality" type="button">Visuals: balanced</button><button id="map-help" type="button" aria-label="Map controls and help">?</button></div><div class="camera-controls" aria-label="Map camera"><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="camera-reset" aria-label="Reset camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 1v6m0 10v6M1 12h6m10 0h6"/></svg></button></div><canvas id="map" aria-label="Isometric Switchyard map. Select a location, or use list view." tabindex="0"></canvas><div class="map-vignette" aria-hidden="true"></div><div class="map-caption"><span><i class="live-dot"></i><b id="map-arrival">YOUR AGENT IS IN THE DISTRICT</b></span><small>Drag to explore · Ctrl/⌘ + scroll to zoom</small></div></div>
-          <div id="map-list" class="hidden location-list"></div><iframe id="godot-frame" class="hidden" title="Godot Syndicates game" loading="lazy"></iframe>
-          <div class="map-bottom"><span>FIELD NOTE <i></i> <b>RULE-BASED ADVISER</b></span><span id="district-status">Your Agent, your authority.</span><button id="lay-low" class="small" title="Once per day: spend 3 Supplies to lower alert by 2">Lay low · −2 alert</button><button id="resupply" class="small" title="Once per day: add up to 6 Supplies and 2 Intel; lower alert by 1">Daily resupply +6</button></div>
-        </div><aside id="agent-console" aria-label="Agent mission console"><div class="agent-card"><div class="portrait" aria-hidden="true"><span class="hood"><i></i><i></i><i></i></span><span class="portrait-glow"></span></div><div><p class="eyebrow">YOUR PERSISTENT AGENT</p><h2 id="agent-name">AEGIS-07</h2><span id="agent-subtitle" class="fine">CONNECTING</span><span id="agent-memory" class="agent-memory">Syndicates memory: awaiting first report</span></div><span class="agent-dot" aria-hidden="true"></span></div><div class="panel mission-panel" id="mission-panel" aria-live="polite"></div><div class="aside-foot">AGENT AUTHORITY <span>CONTROLLED BY YOUR <button class="text-button" data-tab="policy">PERMISSION CARD ↗</button></span></div></aside></div>
-        <button id="open-agent-console" class="mobile-agent-launch" type="button"><span><small>YOUR AGENT</small><b id="mobile-agent-label">Open mission console</b></span><span aria-hidden="true">↗</span></button><div class="section-label"><div><p class="eyebrow">CHOOSE AN OBJECTIVE</p><h2>The job board</h2><p>Each mission has an entry cost, three decisions, and a permanent result.</p></div><span class="section-side">01 / SWITCHYARD</span></div><div id="job-board" class="job-board"></div>
-      </section>
-      <section id="passport" class="screen hidden" aria-label="Agent Passport"><div class="section-label"><div><p class="eyebrow">THE RECORD STAYS</p><h2>Agent Passport</h2><p>A replayable history of what your Agent attempted and how it went.</p></div><span class="section-side">SYNDICATES DOMAIN ONLY</span></div><div class="truth-bar">A <b>miss</b> stays on the record. These receipts are evidence of this game's decisions, not Arena wins or trading credentials.</div><div id="passport-stats" class="stats-grid"></div><div id="receipts" class="receipt-list"></div></section>
-      <section id="crew" class="screen hidden" aria-label="Crew"><div class="section-label"><div><p class="eyebrow">TRUST IS BUILT TOGETHER</p><h2>Your Syndicate</h2><p>Invite real members, pool earned Supplies, and maintain a foothold.</p></div><span class="section-side">FIVE SEATS MAXIMUM</span></div><div id="crew-content"></div></section>
-      <section id="social" class="screen hidden" aria-label="Live duels and Agent hiring">
- <div class="exchange-hero"><div><p class="eyebrow">THE SWITCHYARD EXCHANGE</p><h2>Find your rival.<br>Build your crew’s edge.</h2><p>Challenge a real player. Hire an Agent with a record.<br>Every result has an owner, a policy and a receipt.</p></div><div class="exchange-seal" aria-hidden="true">↗<span>PLAY / PROVE / COLLABORATE</span></div></div>
- <div class="exchange-status"><span><i class="live-dot"></i> <span id="social-health" role="status">Connecting</span></span><span>Human directed · no financial stakes</span></div>
- <nav class="exchange-shortcuts" aria-label="Exchange sections"><a href="#duel-panel">Live duels ↓</a><a href="#hire-form">Hire an Agent ↓</a><a href="#contract-list">Your assignments ↓</a></nav><div id="social-policy" class="panel"></div><div class="exchange-layout"><div id="duel-panel" class="panel"></div><div><form id="hire-form" class="panel"><p class="eyebrow">A2A / BOUNDED ASSIGNMENTS</p><h2>Hire proven work.</h2><p>One Agent. One mission. One accountable result.</p><label>Mission domain<select id="hire-kind"><option value="scout">Scout — reconnaissance</option><option value="negotiate">Negotiate — diplomacy</option><option value="defend">Defend — protection</option><option value="heist">Heist — operations</option></select></label><label>Payment in earned Supplies<input id="hire-fee" type="number" min="1" max="5" value="3" required></label><button id="hire-submit" class="primary">Review & post assignment →</button><p class="fine">No cash value. A successful matching mission is required before payment. Unfilled offers expire after 15 minutes; accepted jobs have 15 minutes to complete.</p></form><div class="exchange-note"><b>Proof opens the door.</b><p>Your Agent needs one recorded success in a domain to accept its jobs. PvP wins never grant work qualifications.</p></div></div></div>
- <div class="section-label"><div><p class="eyebrow">WORK WITH A CLEAR FINISH LINE</p><h2>Open assignments</h2></div></div><div id="offer-list" class="offer-grid"></div>
- <div class="section-label"><div><p class="eyebrow">ESCROW & EVIDENCE</p><h2>Your assignments</h2></div></div><div id="contract-list" class="offer-grid"></div>
- </section><section id="policy" class="screen hidden" aria-label="Permissions"><div class="section-label"><div><p class="eyebrow">AUTHORITY HAS LIMITS</p><h2>Agent Permission Card</h2><p>Set your boundaries before sending your Agent into the district.</p></div><span class="section-side">YOU CAN STOP AT ANY TIME</span></div><form id="policy-form" class="panel policy-form"><div class="policy-callout"><b>World-only authority</b><span>These permissions govern fictional in-game actions and Supplies. They never authorize trades, withdrawals, or wallet transactions.</span></div><label>Maximum Supplies per mission <small>Choices cannot raise the cap during an active job.</small><input id="budget" type="number" min="0" max="20" inputmode="numeric" required></label><label class="check"><input id="risk" type="checkbox"> Allow risky choices when I choose them</label><fieldset id="allowed"><legend>Allowed jobs</legend></fieldset><label class="check stop"><input id="stopped" type="checkbox"> Emergency stop — block new missions and choices</label><p class="fine">You can withdraw an active mission. Committed choices resolve and remain recorded.</p><button class="primary" type="submit">Save permissions</button><p id="policy-version" class="fine"></p></form></section>
+<body class="world-view">
+  <a class="skip-link" href="#dock">Skip to menu</a>
+  <!-- The 3D world fills the screen (world.js). #map is the 2D fallback when WebGL is unavailable (app.js). -->
+  <div id="map-wrap" class="world">
+    <canvas id="map" aria-label="Switchyard map. Select a location, or use the Jobs page." tabindex="0"></canvas>
+    <div id="district-labels" class="tags-layer"></div>
+  </div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div id="world-tip" class="world-tip glass" hidden></div>
+
+  <!-- Sign in: over the world while it orbits -->
+  <section id="login" class="login glass hidden" aria-labelledby="login-title">
+    <p class="eyebrow">KULT WORLD / SYNDICATES / DISTRICT 01</p>
+    <h1 class="login-word">The Switchyard<span>.</span></h1>
+    <h2 id="login-title">Every Agent starts somewhere.</h2>
+    <p id="login-text">Enter a clearly labelled sandbox with AEGIS-07. This history stays separate from your KULT Arena Agent.</p>
+    <div class="login-actions"><button id="enter" class="primary">Enter local sandbox <span aria-hidden="true">↗</span></button><button id="retry" class="ghost">Retry connection</button></div>
+    <p class="fine">No wallet · No money at risk · NPC missions + opt-in live duels</p>
+  </section>
+
+  <div id="experience" class="hidden">
+    <!-- HUD -->
+    <header class="hud-top">
+      <div class="agent-card hud-player glass">
+        <div class="portrait" aria-hidden="true"><span class="hood"><i></i><i></i><i></i></span></div>
+        <div class="hp-main">
+          <p class="eyebrow">YOUR PERSISTENT AGENT</p>
+          <h2 id="agent-name">AEGIS-07</h2>
+          <span id="agent-subtitle" class="hp-sub">CONNECTING</span>
+          <span id="agent-memory" class="hp-memory">Syndicates memory: awaiting first report</span>
+        </div>
+      </div>
+      <div class="location glass"><span class="dot"></span><span>THE SWITCHYARD</span><small>SEASON <span id="season">01</span></small></div>
+      <div class="hud-right">
+        <div class="resources" aria-label="In-game resources">
+          <span class="pill glass sup" title="Supplies: your mission budget"><i></i><small>SUPPLIES</small><b id="supplies">—</b></span>
+          <span class="pill glass int" title="Intel: better evidence"><i></i><small>INTEL</small><b id="intel">—</b></span>
+          <span class="pill glass inf" title="Influence: crew standing"><i></i><small>INFLUENCE</small><b id="influence">—</b></span>
+          <span class="pill glass alr" title="Alert: district pressure"><i></i><small>ALERT</small><b id="alert">—</b></span>
+        </div>
+        <span id="mode" class="badge glass">CONNECTING</span>
+        <button id="home" class="icon-btn glass" type="button" title="KULT World home" aria-label="KULT World home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z" /></svg></button>
+      </div>
+    </header>
+
+    <!-- The operation, as a quest tracker -->
+    <aside class="quest-tracker glass" aria-labelledby="operation-title">
+      <div class="qt-head"><span id="operation-state">THE GLASSWATCH MANIFEST</span><b id="journey-state">READY</b></div>
+      <h3 id="operation-title">Find a route. Take the manifest.</h3>
+      <p id="operation-detail">Scout the canal to uncover the patrol, then use that report at the depot.</p>
+      <ol class="journey" aria-label="Operation progress">
+        <li data-chapter="scout"><i></i><span><b>Reveal the patrol</b><small>Verify a Scout report</small></span></li>
+        <li data-chapter="heist"><i></i><span><b>Take the manifest</b><small>Use the report at the depot</small></span></li>
+        <li data-chapter="crew"><i></i><span><b>Hold the workshop</b><small>Turn a win into territory</small></span></li>
+      </ol>
+      <div class="qt-next"><small>NEXT STOP</small><b id="map-objective">CANAL WATCH</b><button id="focus-next" type="button" class="text-button">Go there ↗</button></div>
+      <div class="qt-actions"><button id="operation-cta" class="primary" type="button">Start the Scout →</button><button id="operation-hire" class="ghost" type="button">Or hire a Scout ↗</button></div>
+      <p class="qt-story" id="map-story">Seven places. Your next move.</p>
+    </aside>
+
+    <!-- The mission console: opens for a job, an active mission or a fresh result -->
+    <aside id="agent-console" class="console glass" aria-label="Agent mission console" hidden>
+      <div class="console-bar"><span><i class="live-dot"></i>AGENT CONSOLE</span><button id="close-agent-console" type="button" class="os-x" aria-label="Close mission console">×</button></div>
+      <div class="panel mission-panel" id="mission-panel" aria-live="polite"></div>
+      <div class="aside-foot">AGENT AUTHORITY · <button class="text-button" data-tab="policy">PERMISSION CARD ↗</button></div>
+    </aside>
+    <button id="open-agent-console" class="console-launch glass" type="button" hidden><small>YOUR AGENT</small><b id="mobile-agent-label">Open mission console</b></button>
+
+    <div id="notice" class="feed-item glass" role="status" aria-live="polite"></div>
+    <div id="hint" class="hint glass"><span id="map-arrival">YOUR AGENT IS IN THE DISTRICT</span> · Click the ground or use WASD to walk · Click a building to enter · Drag to look around · Scroll to zoom</div>
+
+    <!-- Minimap and map tools -->
+    <div class="minimap glass">
+      <div class="mm-head"><span>THE SWITCHYARD</span><button type="button" id="camera-reset" class="mm-center" title="Recenter" aria-label="Recenter"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg></button></div>
+      <canvas id="minimap" width="352" height="352" title="Click to walk there"></canvas>
+      <div class="mm-foot" id="mm-place">District 01</div>
     </div>
-  </main>
-  <dialog id="mission-drawer" aria-label="Agent mission console"><div class="drawer-bar"><span>AGENT CONSOLE</span><button id="close-agent-console" type="button" aria-label="Close mission console">Back to district ↓</button></div><div id="drawer-content"></div></dialog>
-  <dialog id="map-help-dialog" aria-labelledby="map-help-title"><div class="modal-head"><h2 id="map-help-title">Make your next move.</h2><button id="close-map-help" class="ghost" aria-label="Close map help">✕</button></div><p>Select a named location to review its job. Your next destination has a lime outline. Selecting a place does not spend Supplies.</p><dl class="map-help-list"><div><dt>Explore</dt><dd>Drag the map to pan. On a PC, hold Ctrl or ⌘ while scrolling to zoom; ordinary scrolling moves the page. Pinch to zoom on a touchpad or touch screen.</dd></div><div><dt>Keyboard</dt><dd>Tab to a location. Enter to open. On the map, arrow keys pan, +/− zoom, and 0 resets.</dd></div><div><dt>Lower-powered device</dt><dd>Switch Visuals to low, or use List view. The same missions and rewards remain available.</dd></div><div><dt>Your authority</dt><dd>Review the entry cost and your permission card before committing. Movement is visual; the server records every outcome.</dd></div></dl></dialog>
-  <footer><span>KULT WORLD <b>/</b> SYNDICATES</span><span>Same Agent. Every attempt counts.</span><span>0.7.1 RC · SWITCHYARD DISTRICT</span></footer>
-  <dialog id="replay-modal" aria-labelledby="replay-title"><div class="modal-head"><div><p class="eyebrow">THE DECISIONS BEHIND THE OUTCOME</p><h2 id="replay-title">Mission replay</h2></div><button id="close-replay" class="ghost" aria-label="Close replay">✕</button></div><div id="replay-body"></div><div class="modal-actions"><button id="replay-play" class="primary">▶ Play timeline</button><button id="receipt-download" class="ghost">Export receipt JSON</button><button id="receipt-verify" class="ghost">Verify signature</button></div><div id="verification" role="status" aria-live="polite"></div></dialog>
-  <dialog id="confirm-modal" aria-labelledby="confirm-title"><div class="modal-head"><div><p class="eyebrow">REVIEW ACTION</p><h2 id="confirm-title"></h2></div></div><p id="confirm-body"></p><div class="modal-actions"><button id="confirm-no" class="ghost">Keep planning</button><button id="confirm-yes" class="primary">Confirm</button></div></dialog>
+    <div class="map-tools glass" role="toolbar" aria-label="Map tools">
+      <button type="button" id="zoom-in" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
+      <button type="button" id="zoom-out" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
+      <button type="button" id="map-labels" title="Labels" aria-label="Labels" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10l4 5-4 5H4z" /></svg></button>
+      <button type="button" id="map-quality" title="Visual quality" aria-label="Visual quality"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2l.9-5.5-4-3.9 5.5-.8z" /></svg></button>
+      <button type="button" id="map-help" title="Controls and help" aria-label="Controls and help"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 1-1 1.7M12 17h.01" /></svg></button>
+    </div>
+
+    <!-- Dock -->
+    <nav id="dock" class="dock glass" aria-label="Syndicates">
+      <button type="button" data-page="jobs" style="--c:#ff6a3d"><span class="dk-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18" /></svg><kbd>1</kbd></span><span class="dl">Jobs</span></button>
+      <button type="button" data-tab="social" style="--c:#ff4fa3"><span class="dk-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 17.5 21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2" /></svg><kbd>2</kbd></span><span class="dl">Play &amp; Hire</span></button>
+      <button type="button" data-tab="passport" style="--c:#4fd8ff"><span class="dk-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" /><circle cx="12" cy="10" r="3" /><path d="M8.5 17h7" /></svg><kbd>3</kbd></span><span class="dl">Passport</span></button>
+      <button type="button" data-tab="crew" style="--c:#9b5cff"><span class="dk-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3 3 0 0 1 0 6M18 14.2c2 .8 3 2.8 3 5.8" /></svg><kbd>4</kbd></span><span class="dl">Crew</span></button>
+      <button type="button" data-tab="policy" style="--c:#12b886"><span class="dk-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg><kbd>5</kbd></span><span class="dl">Permissions</span></button>
+      <button type="button" data-act="console" style="--c:#ffc94d"><span class="dk-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M7 9l3 2.5L7 14M12 14h5M8 21h8" /></svg><kbd>C</kbd></span><span class="dl">Console</span></button>
+    </nav>
+
+    <button id="district-tab-proxy" type="button" data-tab="district" hidden>Back to the district</button>
+    <!-- Pages: glass windows over the world -->
+    <div id="pages" class="pages" hidden>
+      <div class="page-win glass" role="dialog" aria-modal="false" aria-labelledby="page-title">
+        <header class="page-bar"><span class="page-ico dk-ico" id="page-ico" aria-hidden="true"></span><div><p class="eyebrow" id="page-eyebrow">SWITCHYARD</p><h2 id="page-title">Jobs</h2></div><button type="button" class="os-x" id="page-close" aria-label="Close">×</button></header>
+        <div class="page-body">
+          <section id="jobs-page" class="page" data-title="The job board" data-eyebrow="CHOOSE AN OBJECTIVE" hidden>
+            <p class="lead">Each mission has an entry cost, three decisions and a permanent result. Pick one and your Agent walks there.</p>
+            <div id="job-board" class="job-board"></div>
+            <div class="section-label"><div><p class="eyebrow">THE DISTRICT</p><h3>Places</h3></div><span class="section-side">SEVEN LOCATIONS</span></div>
+            <div id="map-list" class="location-list"></div>
+            <div class="section-label"><div><p class="eyebrow">FIELD NOTE · RULE-BASED ADVISER</p><h3 id="district-status">Your Agent, your authority.</h3></div></div>
+            <div class="daily"><button id="resupply" class="ghost" title="Once per day: add up to 6 Supplies and 2 Intel; lower alert by 1">Daily resupply · +6 Supplies</button><button id="lay-low" class="ghost" title="Once per day: spend 3 Supplies to lower alert by 2">Lay low · −2 alert</button></div>
+            <button id="list-toggle" class="hidden" type="button">List view</button><button id="godot-toggle" class="hidden" type="button">Godot game</button><iframe id="godot-frame" class="hidden" title="Godot Syndicates game" loading="lazy"></iframe>
+          </section>
+          <section id="district" class="screen page-marker"></section>
+          <section id="social" class="screen page hidden" data-title="Play &amp; Hire" data-eyebrow="THE SWITCHYARD EXCHANGE" aria-label="Live duels and Agent hiring">
+            <div class="exchange-hero"><div><h3>Find your rival. Build your crew’s edge.</h3><p>Challenge a real player. Hire an Agent with a record. Every result has an owner, a policy and a receipt.</p></div><div class="exchange-seal" aria-hidden="true">↗<span>PLAY / PROVE / COLLABORATE</span></div></div>
+            <div class="exchange-status"><span><i class="live-dot"></i> <span id="social-health" role="status">Connecting</span></span><span>Human directed · no financial stakes</span></div>
+            <nav class="exchange-shortcuts" aria-label="Exchange sections"><a href="#duel-panel">Live duels ↓</a><a href="#hire-form">Hire an Agent ↓</a><a href="#contract-list">Your assignments ↓</a></nav>
+            <div id="social-policy" class="panel"></div>
+            <div class="exchange-layout"><div id="duel-panel" class="panel"></div><div><form id="hire-form" class="panel"><p class="eyebrow">A2A / BOUNDED ASSIGNMENTS</p><h3>Hire proven work.</h3><p>One Agent. One mission. One accountable result.</p><label>Mission domain<select id="hire-kind"><option value="scout">Scout — reconnaissance</option><option value="negotiate">Negotiate — diplomacy</option><option value="defend">Defend — protection</option><option value="heist">Heist — operations</option></select></label><label>Payment in earned Supplies<input id="hire-fee" type="number" min="1" max="5" value="3" required></label><button id="hire-submit" class="primary">Review &amp; post assignment →</button><p class="fine">No cash value. A successful matching mission is required before payment. Unfilled offers expire after 15 minutes; accepted jobs have 15 minutes to complete.</p></form><div class="exchange-note"><b>Proof opens the door.</b><p>Your Agent needs one recorded success in a domain to accept its jobs. PvP wins never grant work qualifications.</p></div></div></div>
+            <div class="section-label"><div><p class="eyebrow">WORK WITH A CLEAR FINISH LINE</p><h3>Open assignments</h3></div></div><div id="offer-list" class="offer-grid"></div>
+            <div class="section-label"><div><p class="eyebrow">ESCROW &amp; EVIDENCE</p><h3>Your assignments</h3></div></div><div id="contract-list" class="offer-grid"></div>
+          </section>
+          <section id="passport" class="screen page hidden" data-title="Agent Passport" data-eyebrow="THE RECORD STAYS" aria-label="Agent Passport">
+            <p class="lead">A replayable history of what your Agent attempted and how it went.</p>
+            <div class="truth-bar">A <b>miss</b> stays on the record. These receipts are evidence of this game's decisions, not Arena wins or trading credentials.</div>
+            <div id="passport-stats" class="stats-grid"></div><div id="receipts" class="receipt-list"></div>
+          </section>
+          <section id="crew" class="screen page hidden" data-title="Your Syndicate" data-eyebrow="TRUST IS BUILT TOGETHER" aria-label="Crew">
+            <p class="lead">Invite real members, pool earned Supplies and hold a foothold. Five seats at most.</p>
+            <div id="crew-content"></div>
+          </section>
+          <section id="policy" class="screen page hidden" data-title="Agent Permission Card" data-eyebrow="AUTHORITY HAS LIMITS" aria-label="Permissions">
+            <p class="lead">Set your boundaries before sending your Agent into the district. You can stop at any time.</p>
+            <form id="policy-form" class="panel policy-form"><div class="policy-callout"><b>World-only authority</b><span>These permissions govern fictional in-game actions and Supplies. They never authorize trades, withdrawals, or wallet transactions.</span></div><label>Maximum Supplies per mission <small>Choices cannot raise the cap during an active job.</small><input id="budget" type="number" min="0" max="20" inputmode="numeric" required></label><label class="check"><input id="risk" type="checkbox"> Allow risky choices when I choose them</label><fieldset id="allowed"><legend>Allowed jobs</legend></fieldset><label class="check stop"><input id="stopped" type="checkbox"> Emergency stop — block new missions and choices</label><p class="fine">You can withdraw an active mission. Committed choices resolve and remain recorded.</p><button class="primary" type="submit">Save permissions</button><p id="policy-version" class="fine"></p></form>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="map-help-dialog" class="glass" aria-labelledby="map-help-title"><div class="modal-head"><h2 id="map-help-title">Make your next move.</h2><button id="close-map-help" class="os-x" aria-label="Close map help">×</button></div><p>Walk to a building and press E, or click it, to review its job. The orange beam marks your next stop. Choosing a place never spends Supplies.</p><dl class="map-help-list"><div><dt>Walk</dt><dd>Click the ground, or use WASD / the arrow keys. Click the minimap to travel.</dd></div><div><dt>Look</dt><dd>Drag to turn the view. Scroll or pinch to zoom; 0 recenters.</dd></div><div><dt>Menu</dt><dd>The dock opens Jobs, Play &amp; Hire, Passport, Crew and Permissions (keys 1–5). C opens your Agent console; Esc closes pages.</dd></div><div><dt>Lower-powered device</dt><dd>The star button switches visuals to low. Every mission is also on the Jobs page.</dd></div><div><dt>Your authority</dt><dd>Review the entry cost and your permission card before committing. Movement is visual; the server records every outcome.</dd></div></dl></dialog>
+  <dialog id="replay-modal" class="glass" aria-labelledby="replay-title"><div class="modal-head"><div><p class="eyebrow">THE DECISIONS BEHIND THE OUTCOME</p><h2 id="replay-title">Mission replay</h2></div><button id="close-replay" class="os-x" aria-label="Close replay">×</button></div><div id="replay-body"></div><div class="modal-actions"><button id="replay-play" class="primary">▶ Play timeline</button><button id="receipt-download" class="ghost">Export receipt JSON</button><button id="receipt-verify" class="ghost">Verify signature</button></div><div id="verification" role="status" aria-live="polite"></div></dialog>
+  <dialog id="confirm-modal" class="glass" aria-labelledby="confirm-title"><div class="modal-head"><div><p class="eyebrow">REVIEW ACTION</p><h2 id="confirm-title"></h2></div></div><p id="confirm-body"></p><div class="modal-actions"><button id="confirm-no" class="ghost">Keep planning</button><button id="confirm-yes" class="primary">Confirm</button></div></dialog>
 </body></html>
