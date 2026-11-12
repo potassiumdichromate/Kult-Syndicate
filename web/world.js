@@ -20,7 +20,9 @@ const wrap = $('#map-wrap'), labels = $('#district-labels');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const here = (p) => new URL(p, import.meta.url).href;
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-const load = (p) => loader.loadAsync(here(p));
+// Bump when the models change: .glb files are cached for a day.
+const MODELS_V = 'remesh-1';
+const load = (p) => loader.loadAsync(here(p) + '?v=' + MODELS_V);
 
 // ------------------------------------------------------------------ the grid
 // The server's 10 x 10 district (server/content.py): the canal runs down
@@ -79,15 +81,15 @@ function neonMask(map, max = 1024) {
 }
 // Meshy exports full metal; with no environment to reflect it reads dark, so
 // treat the texture as painted surface, then light its neon. "lite" (small
-// props, the rock) keeps only the colour and a half-size glow mask, which
-// saves GPU memory where the extra maps cannot be seen.
+// props, the rock) gets a half-size glow mask to save GPU memory.
 function dress(obj, { shadows = true, glow = 1.1, lite = false } = {}) {
   obj.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = shadows; o.receiveShadow = true;
     for (const m of [].concat(o.material)) {
       if (m.isMeshStandardMaterial) { m.metalness = Math.min(m.metalness, 0.12); m.metalnessMap = null; m.roughness = Math.max(m.roughness, 0.6); }
-      if (lite) { m.normalMap = null; m.roughnessMap = null; m.aoMap = null; m.roughness = 0.75; }
+      // The remeshed models carry their detail in the normal map; keep it.
+      m.roughnessMap = null; m.aoMap = null; m.roughness = 0.7;
       if (m.map && !m.emissiveMap && glow) { const mask = neonMask(m.map, lite ? 512 : 1024); if (mask) { m.emissiveMap = mask; m.emissive.set('#ffffff'); m.emissiveIntensity = glow; } }
       m.needsUpdate = true;
     }
