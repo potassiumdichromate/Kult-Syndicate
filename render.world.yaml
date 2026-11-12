@@ -1,0 +1,43 @@
+# Render Blueprint: the Switchyard inside KULT World (production).
+#
+# KULT World serves this district at https://world.kult.games/world/syndicates/
+# by proxying to this service (kult-world syndicates/syndicates.mjs), so it is
+# same-origin with World: PUBLIC_ORIGIN is World's origin, not this service's.
+# The game and its receipt worker run in one process (server/serve_world.py),
+# because a Render disk attaches to one service and both need the SQLite file.
+#
+# Secrets (set in the dashboard; `sync: false` keeps them out of this file):
+#   KULT_SYNDICATES_LAUNCH_SECRET    32+ random characters; the same value as
+#                                    SYNDICATES_LAUNCH_SECRET on KULT World
+#   KULT_SYNDICATES_CALLBACK_SECRET  32+ random characters, different from the
+#                                    launch secret; the same value as
+#                                    SYNDICATES_CALLBACK_SECRET on KULT World
+# The Ed25519 receipt signing key is created on the disk at first start. Pin
+# its public key on KULT World (SYNDICATES_PUBLIC_KEY) from
+#   https://world.kult.games/world/syndicates/api/public-key
+# Keep the disk: receipts are signed with that key.
+services:
+  - type: web
+    name: kult-syndicates-world
+    runtime: docker
+    plan: starter
+    numInstances: 1
+    dockerCommand: python server/serve_world.py
+    healthCheckPath: /world/syndicates/api/health
+    disk:
+      name: syndicates-world-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SYNDICATES_DEMO
+        value: "no"
+      - key: BASE_PATH
+        value: /world/syndicates
+      - key: PUBLIC_ORIGIN
+        value: https://world.kult.games
+      - key: KULT_WORLD_RECEIPT_URL
+        value: https://world.kult.games/api/syndicates/receipt
+      - key: KULT_SYNDICATES_LAUNCH_SECRET
+        sync: false
+      - key: KULT_SYNDICATES_CALLBACK_SECRET
+        sync: false

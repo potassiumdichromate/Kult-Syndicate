@@ -62,6 +62,23 @@ Launch an existing test Agent through World, finish Scout and Heist, inspect the
 
 The supplied evidence establishes local gameplay and contract behavior. This environment had no Docker daemon or live KULT credentials, so the built image, live gateway and production load still need the deployment team's checks. Keep the release in staging until those pass.
 
+## Render: inside KULT World
+
+`render.world.yaml` runs the Switchyard for KULT World on Render. KULT World
+(`kult-world`, `syndicates/syndicates.mjs`) proxies `/world/syndicates/` to
+this service, issues the launch tickets and receives the receipts. That keeps
+the district same-origin with World.
+
+- Render disks attach to one service, so `server/serve_world.py` runs the game
+  and the receipt worker in one process on the same disk. `deliver.py` is
+  unchanged; its loop runs on a background thread.
+- Set the two secrets in the Render dashboard. The launch and callback values
+  must match KULT World's `SYNDICATES_LAUNCH_SECRET` and
+  `SYNDICATES_CALLBACK_SECRET`.
+- After the first start, read the public key from
+  `https://world.kult.games/world/syndicates/api/public-key` and set it as
+  `SYNDICATES_PUBLIC_KEY` on KULT World.
+
 ## Upgrades and recovery
 
 Back up the SQLite volume and signing key together. Test restoring them before opening to public traffic. Run a single game service and one worker. The worker delivers at most ten due receipts per cycle; inspect its logs and outbox backlog as traffic grows. Multiple writable replicas require a database/worker coordination change.
