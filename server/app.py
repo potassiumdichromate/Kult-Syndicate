@@ -335,9 +335,9 @@ class Handler(BaseHTTPRequestHandler):
         for item in self.headers.get('Cookie','').split(';'):
             if item.strip().startswith('syndicates_session='):return item.strip().split('=',1)[1]
         return ''
-    def headers_common(self):
-        self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer');self.send_header('Cache-Control','no-store')
-        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'self'; object-src 'none'")
+    def headers_common(self,cache='no-store'):
+        self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer');self.send_header('Cache-Control',cache)
+        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'self'; object-src 'none'")
     def send(self,status,obj,token=None):
         data=canonical(obj);self.send_response(status);self.headers_common();self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)))
         if token is not None:self.send_header('Set-Cookie',f'syndicates_session={token}; HttpOnly; SameSite=Strict; Path={self.server.base_path or "/"}; Max-Age=86400'+('' if self.server.game.demo else '; Secure'))
@@ -396,8 +396,10 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith('/api/'):raise Problem(404,'Route not found')
             rel='index.html' if path in ['/','/world/syndicates','/world/syndicates/'] else path.lstrip('/')
             f=(ROOT/'web'/rel).resolve();require(f.is_relative_to((ROOT/'web').resolve()) and f.is_file(),'Not found',404)
-            require(f.suffix in ['.html','.css','.js','.json','.svg','.png','.ico','.wasm','.pck','.txt'],'Not found',404)
-            data=f.read_bytes();self.send_response(200);self.headers_common();self.send_header('Content-Type', 'application/wasm' if f.suffix=='.wasm' else mimetypes.guess_type(str(f))[0] or 'application/octet-stream');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+            require(f.suffix in ['.html','.css','.js','.json','.svg','.png','.ico','.wasm','.pck','.txt','.glb','.woff2','.webp'],'Not found',404)
+            # Models and fonts (KULT World's look) are large and versioned by file name; let browsers keep them a day.
+            kind={'.wasm':'application/wasm','.glb':'model/gltf-binary','.woff2':'font/woff2','.webp':'image/webp'}.get(f.suffix) or mimetypes.guess_type(str(f))[0] or 'application/octet-stream'
+            data=f.read_bytes();self.send_response(200);self.headers_common('public, max-age=86400' if f.suffix in ('.glb','.woff2','.webp') else 'no-store');self.send_header('Content-Type',kind);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
         except Problem as e:self.send(e.status,dict(error=e.message))
         except (BrokenPipeError,ConnectionResetError):pass
         except Exception as e:
