@@ -32,3 +32,10 @@ body[data-view="social"] .journey{display:none}body[data-view="social"] .intro h
 .exchange-shortcuts{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}.exchange-shortcuts a{background:#f69a79;padding:9px 13px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:650}#duel-panel,#hire-form,#contract-list{scroll-margin-top:20px}
 
 .godot-mode #district .game-layout{grid-template-columns:1fr}.godot-mode #district aside,.godot-mode #district>.section-label,.godot-mode #job-board{display:none}.godot-mode #godot-frame{width:100%;height:auto;aspect-ratio:16/10;min-height:560px;display:block}
+/* Switchyard field guide and truthful return brief. */
+.return-brief{display:flex;align-items:center;gap:1.25rem;margin:1rem auto;padding:1.1rem 1.3rem;max-width:1400px;border:1px solid #c7dd91;border-radius:18px;background:linear-gradient(110deg,#213b3d,#1c3446);box-shadow:0 12px 32px #071b2255;color:#f0f7de}
+.return-brief.hidden{display:none}
+.return-brief>div{flex:1;min-width:0}.return-brief small{color:#d5eb9d;font-weight:800;letter-spacing:.12em}.return-brief h2{margin:.25rem 0;font-size:1.35rem}.return-brief p{margin:.15rem 0;color:#dbe8db}.return-brief button{flex:none}
+#guide-modal{max-width:min(540px,calc(100vw - 24px));padding:1.6rem;color:#eaf4e7;background:#193037;border:1px solid #648984;border-radius:20px;box-shadow:0 24px 70px #08181b99}
+#guide-modal::backdrop{background:#071419bd;backdrop-filter:blur(5px)}#guide-modal>p{line-height:1.65;margin:1.4rem 0}.guide-meter{display:flex;gap:.5rem;margin:1.1rem 0 1.6rem}.guide-meter i{height:4px;flex:1;border-radius:6px;background:#527171}.guide-meter i.active{background:#d3eb83}.crew-activity{margin-top:1rem}.crew-activity p{border-bottom:1px solid #ffffff24;padding:.5rem 0}.crew-activity small{display:block;opacity:.7}
+@media(max-width:700px){.return-brief{flex-wrap:wrap;margin:.75rem 1rem}.return-brief>div{flex-basis:100%}.return-brief .primary{flex:1}#guide-modal{padding:1.1rem}}

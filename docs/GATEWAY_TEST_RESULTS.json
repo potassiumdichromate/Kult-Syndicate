@@ -1,5 +1,5 @@
 {
-  "build": "0.7.0-rc.1",
+  "build": "0.9.0-rc.1",
   "fixture": "local HTTPS KULT gateway; no live production endpoint contacted",
   "signed_launch": true,
   "launch_replay_rejected": true,

@@ -10,8 +10,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 from content import MISSIONS, BLOCKS, VERSION
 from dynamics import situation, apply_stage
+from content_v2 import MISSIONS as MISSIONS_V2
+from dynamics_v2 import apply_stage as apply_stage_v2
 from social import Social
 from migrations import migrate
+from rivals import board
 from secrets_config import secret_value
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -106,9 +109,20 @@ class Game(Social):
             c.execute('INSERT INTO sessions VALUES(?,?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),aid,csrf,time.time()+86400))
             self.audit(c,aid,'session.entered',dict(mode=mode));return dict(token=token,csrf=csrf,agent=self.public_agent(self.agent(c,aid)))
     def stage(self,m):
-        stage=copy.deepcopy(MISSIONS[m['kind']]['stages'][m['step']]);context=json.loads(m.get('context','{}'))
-        if context.get('ruleVersion')==VERSION:
+        context=json.loads(m.get('context','{}'))
+        old=context.get('ruleVersion')=='switchyard-2.0.0'
+        spec=MISSIONS_V2 if old else MISSIONS
+        stage=copy.deepcopy(spec[m['kind']]['stages'][m['step']])
+        if context.get('ruleVersion') in (VERSION,'switchyard-2.1.0'):
+            context['pastChoices']=json.loads(m['events'])
             stage['_note'],stage['_preferred']=apply_stage(m['kind'],m['step'],stage,context)
+            if context.get('memoryNote'):
+                stage['text']=context['memoryNote']+' '+stage['text']
+            if m['kind']=='negotiate' and m['step']==0 and context.get('unionSurcharge'):
+                stage['options'][0].update(supplies=3,text='Pay 3 Supplies toward the crossing repairs')
+            return stage
+        if old:
+            stage['_note'],stage['_preferred']=apply_stage_v2(m['kind'],m['step'],stage,context)
             return stage
         if m['kind']=='heist' and m['step']==0:
             if context.get('scoutReceipt'):
@@ -126,8 +140,10 @@ class Game(Social):
         d=dict(m); d.pop('seed');d.pop('score');d['policy']=json.loads(d['policy']);d['events']=json.loads(d['events']);d['context']=json.loads(d.get('context','{}'))
         # A verified report reveals the patrol. An unscouted job must not leak it through state.
         if not d['context'].get('scoutReceipt'):d['context'].pop('patrol',None)
-        if d['context'].get('ruleVersion')==VERSION and 'situation' in d['context']:
+        if d['context'].get('ruleVersion') in (VERSION,'switchyard-2.1.0','switchyard-2.0.0') and 'situation' in d['context']:
             d['context']['situation']={k:v for k,v in d['context']['situation'].items() if k in ('clues','startingAlert','hasLead')}
+        if d['kind']=='heist' and any(e.get('choice')=='survey' for e in d['events']):
+            d['context']['patrol']=json.loads(m['context'])['patrol']
         spec=MISSIONS[d['kind']];d['name']=spec['name'];d['intro']=spec['intro'];d['faction']=spec['faction']
         if d['status']=='ACTIVE':
             stage=self.stage(dict(m));d['stage']={**stage,'options':[{k:v for k,v in o.items() if k!='score'} for o in stage['options']]}
@@ -135,7 +151,7 @@ class Game(Social):
             lead=d['context'].get('scoutReceipt')
             observation=('Verified Scout report '+lead[:18]+'… informs this entry.' if lead and d['kind']=='heist' else 'No verified Scout report. Patrol placement is uncertain.' if d['kind']=='heist' else 'The Union remembers your broken agreement; rebuilding trust costs real Supplies.' if d['kind']=='negotiate' and d['context'].get('brokenAgreements') else 'You have recorded '+str(d['context'].get('priorScouts',0))+' successful Scout reports.' if d['kind']=='scout' else 'Your previous Syndicates decisions remain in your record.')
             d['recommendation']=dict(source='RULE_BASED',observation=observation,tradeoff='Compare the resource cost and evidence in each route. The adviser cannot promise success; your choice is recorded.')
-            if d['context'].get('ruleVersion')==VERSION:
+            if d['context'].get('ruleVersion') in (VERSION,'switchyard-2.1.0','switchyard-2.0.0'):
                 d['recommendation']=dict(source='RULE_BASED',observation=' · '.join(d['context']['situation']['clues']),tradeoff=stage['_note'])
         return d
     def scout_lead(self,receipts,c=None):
@@ -155,6 +171,11 @@ class Game(Social):
                 candidates.append((r['createdAt'],dict(receiptId=r['id'],contractReceiptId=contract,source=source,patrol=patrol,expires=r['createdAt']+86400)))
         if candidates:return max(candidates,key=lambda x:x[0])[1]
         return None
+    def rotated(self,history,lead):
+        recent=[r for r in history if r.get('opponentType')=='NPC'][:8]
+        linked=[r for r in recent if r['missionType']=='heist' and r['outcome']!='WITHDRAWN'][:2]
+        if lead and any(r.get('context',{}).get('staleReport')==lead['receiptId'] for r in history):return True
+        return bool(lead and len(linked)==2 and all(r['context'].get('scoutReceipt') for r in linked) and any(r['createdAt']>=lead['expires']-86400 for r in linked))
     def agent_memory(self,receipts):
         npc=[r for r in receipts if r.get('opponentType')=='NPC']
         routes=sum(r.get('missionType')=='scout' and r.get('outcome')=='SUCCESS' and {'verify','qualified'}<={e.get('choice') for e in r.get('replay',[]) if e.get('type')=='choice'} for r in npc)
@@ -170,6 +191,8 @@ class Game(Social):
         r=c.execute('SELECT crews.* FROM crews JOIN members ON crews.id=members.crew WHERE members.agent=?',(aid,)).fetchone()
         if not r:return None
         d=dict(r);d['members']=[dict(x) for x in c.execute('SELECT agents.id,agents.name,agents.influence FROM agents JOIN members ON agents.id=members.agent WHERE members.crew=?',(r['id'],))]
+        events=c.execute("SELECT audit.agent,agents.name,audit.event,audit.detail,audit.at FROM audit JOIN members ON members.agent=audit.agent JOIN agents ON agents.id=audit.agent WHERE members.crew=? AND audit.event IN ('crew.deposit','crew.joined','crew.created','territory.claimed','receipt.issued') ORDER BY audit.id DESC LIMIT 12",(r['id'],)).fetchall()
+        d['activity']=[dict(agent=x['agent'],name=x['name'],event=x['event'],detail=json.loads(x['detail']),at=x['at']) for x in events]
         d['territory']=[dict(x) for x in c.execute('SELECT * FROM territory WHERE crew=? AND expires>? AND season=?',(r['id'],time.time(),self.season()))];return d
     def receipts(self,c,aid):return [json.loads(r[0]) for r in c.execute('SELECT payload FROM receipts WHERE agent=? ORDER BY created DESC LIMIT 50',(aid,))]
     def state(self,token):
@@ -180,8 +203,8 @@ class Game(Social):
             lead=self.scout_lead(rs,c);workshop=self.active_territory(c,aid,'workshop');garden=self.active_territory(c,aid,'garden');synergy=self.crew_synergy(c,aid)
             todayCounts={r['kind']:r['n'] for r in c.execute('SELECT kind,count(*) n FROM missions WHERE agent=? AND created>? GROUP BY kind',(aid,int(time.time()//86400)*86400))}
             completed=next((r for r in rs if r.get('missionType')=='heist' and r.get('outcome')=='SUCCESS' and r.get('context',{}).get('scoutReceipt')),None)
-            return dict(agent=self.public_agent(a),csrf=s['csrf'],social=self.social_view(c,a),mission=self.mission_view(m) if m else None,receipts=rs,crew=self.crew(c,aid),
-                        operation=dict(lead=lead,completedReceipt=completed['id'] if completed else None,workshop=workshop,garden=garden,crewSynergy=synergy),agentMemory=self.agent_memory(rs),
+            return dict(rivals=board(c,self.season()),agent=self.public_agent(a),csrf=s['csrf'],social=self.social_view(c,a),mission=self.mission_view(m) if m else None,receipts=rs,crew=self.crew(c,aid),
+                        operation=dict(lead=None if self.rotated(rs,lead) else lead,stale=bool(self.rotated(rs,lead)),completedReceipt=completed['id'] if completed else None,workshop=workshop,garden=garden,crewSynergy=synergy),agentMemory=self.agent_memory(rs),
                         season=self.season()+1,blocks=BLOCKS,territory=[dict(x) for x in c.execute('SELECT * FROM territory WHERE expires>? AND season=?',(time.time(),self.season()))],
                         missions=[dict(kind=k,name=v['name'],domain=v['domain'],cost=max(1,v['cost']-(1+int(synergy) if k=='heist' and workshop else 0)),reward=(v['reward']+1)//2 if todayCounts.get(k) else v['reward'],repeatToday=bool(todayCounts.get(k)),intro=v['intro']) for k,v in MISSIONS.items()],
                         demo=self.demo,adviser='RULE_BASED',worldConnected=a['mode']=='kult',contentVersion=VERSION,serverTime=time.time(),
@@ -231,7 +254,22 @@ class Game(Social):
             cost=max(1,MISSIONS[kind]['cost']-(1+int(synergy) if workshop else 0));require(cost<=p['maxSupplies'],'Mission exceeds your policy budget',403);require(a['supplies']>=cost,'Not enough Supplies',409)
             mid,seed=ident('job'),secrets.token_hex(24);history=self.receipts(c,aid);lead=self.scout_lead(history,c) if kind=='heist' else None
             repeat=c.execute('SELECT count(*) FROM missions WHERE agent=? AND kind=? AND created>?',(aid,kind,int(time.time()//86400)*86400)).fetchone()[0]
-            context=dict(patrol=lead['patrol'] if lead else ('canal' if int(seed[0],16)%2 else 'gate'),scoutReceipt=lead['receiptId'] if lead else None,scoutContractReceipt=lead['contractReceiptId'] if lead else None,workshopBenefit=bool(workshop),crewSynergy=bool(synergy),gardenBenefit=bool(kind=='scout' and self.active_territory(c,aid,'garden')),ruleVersion=VERSION,repeatToday=repeat,startingAlert=a['alert'],situation=situation(kind,seed,a['alert'],lead),priorScouts=sum(r['missionType']=='scout' and r['outcome']=='SUCCESS' for r in history),brokenAgreements=sum(any(e.get('choice')=='renege' for e in r['replay']) for r in history if r['missionType']=='negotiate' and r.get('contentVersion')!='switchyard-2.0.0'),historyScope='last_50_syndicates_receipts');commit=digest(dict(seed=seed,mission=mid,version=VERSION));ev=[dict(tick=0,type='entered',text=MISSIONS[kind]['intro'],position=[3,6]),dict(tick=1,type='field_brief',text='Field signs: '+'; '.join(context['situation']['clues'])+'. District alert '+str(a['alert'])+'/4.',position=[3,6])]
+            context=dict(patrol=lead['patrol'] if lead else ('canal' if int(seed[0],16)%2 else 'gate'),scoutReceipt=lead['receiptId'] if lead else None,scoutContractReceipt=lead['contractReceiptId'] if lead else None,workshopBenefit=bool(workshop),crewSynergy=bool(synergy),gardenBenefit=bool(kind=='scout' and self.active_territory(c,aid,'garden')),ruleVersion=VERSION,repeatToday=repeat,startingAlert=a['alert'],situation=situation(kind,seed,a['alert'],lead),priorScouts=sum(r['missionType']=='scout' and r['outcome']=='SUCCESS' for r in history),brokenAgreements=sum(any(e.get('choice')=='renege' for e in r['replay']) for r in history if r['missionType']=='negotiate' and r.get('contentVersion')!='switchyard-2.0.0'),historyScope='last_50_syndicates_receipts')
+            recent=[r for r in history if r.get('opponentType')=='NPC'][:8]
+            hits=sum(r['missionType']=='heist' and r['outcome']=='SUCCESS' for r in recent)
+            rotated=self.rotated(history,lead)
+            memory=[]
+            if rotated:
+                context.update(staleReport=context['scoutReceipt'],scoutReceipt=None,scoutContractReceipt=None,patrol=('gate' if int(seed[0],16)%2 else 'canal'))
+                context['situation']['hasLead']=False
+                memory.append('Patrol rotated after repeated report-led entries. Your previous observation is stale; survey for 2 Intel or choose an uncertain entry.')
+            context['resistanceShift']=(1 if kind=='heist' else -1 if kind=='defend' else 0) if hits>=3 else 0
+            if context['resistanceShift']:memory.append('Three recent depot successes shifted district resistance: depot +1, defense −1.')
+            tightened=kind=='negotiate' and any(r['missionType']=='negotiate' and any(e.get('choice')=='renege' for e in r['replay']) for r in recent)
+            context['unionSurcharge']=int(tightened)
+            if tightened:memory.append('The Union remembers a revised delivery. The repairs offer costs 1 extra Supply; the route-data offer is unchanged.')
+            context['memoryNote']=' '.join(memory)
+            commit=digest(dict(seed=seed,mission=mid,version=VERSION));ev=[dict(tick=0,type='entered',text=MISSIONS[kind]['intro'],position=[3,6]),dict(tick=1,type='field_brief',text='Field signs: '+'; '.join(context['situation']['clues'])+'. District alert '+str(a['alert'])+'/4.',position=[3,6])]
             c.execute('INSERT INTO missions VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',(mid,aid,kind,'ACTIVE',0,0,cost,0,seed,commit,json.dumps(p),json.dumps(ev),time.time(),None,None,self.season(),json.dumps(context)))
             c.execute('UPDATE agents SET supplies=supplies-? WHERE id=?',(cost,aid));self.audit(c,aid,'mission.started',dict(mission=mid,kind=kind));return dict(missionId=mid)
         match=re.fullmatch(r'/api/missions/(job_[a-f0-9]+)/(?P<op>choice|withdraw|resolve)',route)
@@ -273,6 +311,7 @@ class Game(Social):
             require(crew['treasury']>=5,'Crew needs 5 Supplies',409)
             members=c.execute('SELECT influence,season FROM agents JOIN members ON agents.id=members.agent WHERE crew=?',(crew['id'],)).fetchall();require(sum(r['influence'] for r in members if r['season']==self.season())>=4,'Crew needs 4 seasonal Influence',409)
             old=c.execute('SELECT * FROM territory WHERE block=?',(body['block'],)).fetchone();require(not old or old['expires']<time.time() or old['season']!=self.season(),'Block is held until its upkeep expires',409)
+            c.execute('DELETE FROM rival_holds WHERE block=?',(body['block'],))
             c.execute('INSERT OR REPLACE INTO territory VALUES(?,?,?,?)',(body['block'],crew['id'],time.time()+86400,self.season()));c.execute('UPDATE crews SET treasury=treasury-5 WHERE id=?',(crew['id'],));self.audit(c,aid,'territory.claimed',body);return dict(ok=True)
         if route=='/api/logout':
             strict(body,[]);c.execute('DELETE FROM sessions WHERE token=?',(hashlib.sha256(token.encode()).hexdigest(),));return dict(ok=True)
@@ -280,8 +319,9 @@ class Game(Social):
     def receipt(self,c,rid):
         r=c.execute('SELECT payload FROM receipts WHERE id=?',(rid,)).fetchone();require(r is not None,'Receipt not found',404);return json.loads(r[0])
     def settle(self,c,a,m,forced=None):
-        spec=MISSIONS[m['kind']];context=json.loads(m.get('context','{}'));new=context.get('ruleVersion')==VERSION
+        spec=MISSIONS[m['kind']];context=json.loads(m.get('context','{}'));new=context.get('ruleVersion') in (VERSION,'switchyard-2.1.0','switchyard-2.0.0')
         threshold=(4+int(hashlib.sha256(m['seed'].encode()).hexdigest()[:2],16)%3+int(context.get('startingAlert',0)>=2)+int(context.get('startingAlert',0)>=4)) if new else 3+int(hashlib.sha256(m['seed'].encode()).hexdigest()[:2],16)%5
+        threshold+=context.get('resistanceShift',0)
         outcome=forced or ('SUCCESS' if m['score']>=threshold else 'MISS');success=outcome=='SUCCESS'
         # Rewards enter only here, in the same transaction as the unique receipt.
         legacy_rewards={'scout':4,'negotiate':5,'defend':6,'heist':9}
@@ -327,7 +367,7 @@ class Game(Social):
         except Exception:return False
 
 class Handler(BaseHTTPRequestHandler):
-    server_version='KULT-Syndicates/0.7.1'
+    server_version='KULT-Syndicates/0.9.0'
     def log_message(self,fmt,*args):pass # Do not log request tokens.
     def token(self):
         auth=self.headers.get('Authorization','')
@@ -386,7 +426,7 @@ class Handler(BaseHTTPRequestHandler):
                 if path=='/api/verify':
                     strict(body,['receipt']);return self.send(200,dict(valid=g.verify(body.get('receipt',{}))))
                 r=g.mutate(self.token(),self.headers.get('X-CSRF-Token',''),path,body,self.headers.get('X-Request-ID',''));return self.send(200,r,'' if path=='/api/logout' else None)
-            if path=='/api/health':return self.send(200,dict(ok=True,version='0.7.1-rc.1',schema=g.schema_version,demo=g.demo,storage='sqlite',basePath=self.server.base_path,godotExport=(ROOT/'web/godot/index.wasm').exists()))
+            if path=='/api/health':return self.send(200,dict(ok=True,version='0.9.0-rc.1',schema=g.schema_version,demo=g.demo,storage='sqlite',basePath=self.server.base_path,godotExport=(ROOT/'web/godot/index.wasm').exists()))
             if path=='/api/state':return self.send(200,g.state(self.token()))
             if path=='/api/public-key':return self.send(200,dict(algorithm='Ed25519',keyId=g.key_id,publicKey=b64(g.pub)))
             if path.startswith('/api/receipts/'):
@@ -417,7 +457,7 @@ def create_server(game=None,port=8787,host='127.0.0.1',base_path=None):
     base=(os.getenv('BASE_PATH','') if base_path is None else base_path).rstrip('/')
     require(not base or re.fullmatch(r'(?:/[A-Za-z0-9_-]+)+',base),'Invalid BASE_PATH',500)
     s=MaintainedServer((host,port),Handler);s.base_path=base;s.game=game or Game();s.limits=defaultdict(deque);s.limit_lock=threading.Lock()
-    s.public_origin=os.getenv('PUBLIC_ORIGIN') or os.getenv('RENDER_EXTERNAL_URL') or f'http://localhost:{s.server_port}'
+    s.public_origin=os.getenv('PUBLIC_ORIGIN',f'http://localhost:{s.server_port}')
     require(s.game.demo or s.public_origin.startswith('https://'),'Production PUBLIC_ORIGIN must use HTTPS',500)
     return s
 if __name__=='__main__':

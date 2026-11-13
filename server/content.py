@@ -1,5 +1,5 @@
 """Versioned, server-owned mission definitions. Never accept scores from clients."""
-VERSION = 'switchyard-2.0.0'
+VERSION = 'switchyard-2.2.0'
 # id, text, resource cost, tactical score. Costs are {supplies, intel}.
 def option(id, text, s=0, i=0, score=0):
     return dict(id=id, text=text, supplies=s, intel=i, score=score)
@@ -24,7 +24,7 @@ MISSIONS = {
    dict(title='Protect what matters',text='The drill reaches its final push. Your archive is the objective.',options=[option('archive','Hold position at the archive',0,0,2),option('chase','Chase the retreating decoy',0,0,-2)])]),
  'heist': dict(name='The midnight manifest',domain='operations',faction='Glasswatch',cost=3,reward=6,influence=3,
   intro='Recover a fictional transit manifest from the Glasswatch depot. Nobody’s wallet is at risk.',
-  stages=[dict(title='Choose the entry',text='Glasswatch monitors the main gate. The canal is quiet, but the signal is old.',options=[option('canal','Use Intel to enter through the canal',1,1,3),option('gate','Move quickly through the main gate',0,0,-1)]),
+  stages=[dict(title='Choose the entry',text='The patrol can be at either entry.',options=[option('canal','Commit to the canal route',1,1,3),option('gate','Commit to the main gate',0,0,-1),option('survey','Survey both approaches before entering',0,2,2)]),
    dict(title='The patrol has changed',text='A guard drone blocks the planned crossing. Adapt, or force the original route.',options=[option('reroute','Reroute using a fresh signal',0,1,3),option('force','Force the original route',2,0,-2)]),
    dict(title='Take only the objective',text='The manifest is in reach. An extra cache would expose your exit.',options=[option('extract','Secure the manifest and extract',0,0,2),option('greed','Reach for the extra cache',1,0,-3)])])
 }

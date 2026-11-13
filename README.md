@@ -1,17 +1,44 @@
-# KULT Syndicates 0.7.1 — desktop experience update
+# KULT Syndicates 0.9.0 RC
 
-A playable Switchyard district for KULT World: Scout the canal, use verified intel at the depot, pool earned Supplies with a crew, and claim territory. The same Agent keeps a signed record of successes and misses. Live duels and bounded Agent hiring are included.
+A playable Switchyard district for KULT World: Scout the canal, use verified intel at the depot, pool earned Supplies with a crew, and hold territory against three rival crews. The same Agent keeps a signed record of successes, misses and withdrawals.
 
-**Start with [DEPLOY.md](DEPLOY.md).** It covers the included Docker configuration, new secret setup, the `/world/syndicates/` mount, and the KULT World adapter. This package is ready for staging deployment. The live KULT host and credentials must be configured and checked before public release.
+**Start with [DEPLOY.md](DEPLOY.md).** It covers Docker, Render, secrets, the `/world/syndicates/` mount, migration 004 and the KULT World adapter. Back up the database before upgrading.
 
-## What changed in 0.7.1
+## What changed in 0.9.0 RC
+
+- **Rival crews.** Vance (escalation: targets the workshop), Iris (intelligence: targets the garden) and the Oathkeepers (stewardship: occupy an empty block). One NPC move per observed UTC day, recorded server-side; idle days are never back-filled.
+- **Territory competition.** A crew reclaims a rival-held block with the existing lease rules (5 treasury Supplies, 4 seasonal Influence). The Crew page shows each rival's doctrine, captures and current holds.
+- **Adaptive missions.** Earlier Scout reports, Heists and negotiation choices shape later difficulty, patrol intelligence and cost. A report goes stale after two report-led entries change the patrol. New NPC missions use `switchyard-2.2.0`.
+- **Return briefs.** On return, a brief appears only when recorded state changed: a crew action, territory, a rival move or a new receipt.
+- **First-visit tour and player handbook.** On the first visit an interactive tour (`web/tour.js`) walks the six chapters of the KULT Syndicates First Visit manual on the real interface: start here, the first two missions, the mission board, Play & Hire, crew and territory, Passport and return. It spotlights each part, opens the pages it describes, and pauses after chapter 02 so a new player can start the Scout. Guide (key G) reopens it, and the printable [player handbook](web/player-guide.html) follows the same six chapters.
+- **Backend.** Migration `004_rivals.sql` adds `rival_moves` and `rival_holds` (schema 4); existing Agents, receipts and signing keys are untouched. Pending `switchyard-2.0.0` and `2.1.0` missions keep their original rules.
+- **KULT World adapter.** Accepts `switchyard-2.1.0` and `switchyard-2.2.0` receipts (`integration/world-adapter.cjs`; apply the same change in KULT World before deploying).
+
+## The Switchyard in KULT World's style
+
+- A full-screen 3D floating island (`web/world.js`) built like KULT World's city: Meshy-made tiles, sky-rock, rail-yard props and seven landmarks, with KULT World's sky, lighting and bloom. Walk by clicking or WASD; E at a door opens its job.
+- A glass HUD, quest tracker, mission console, minimap and dock open Jobs, Play & Hire, Passport, Crew, Permissions, the Console and the Guide as glass pages (`web/shell.js`, `web/switchyard.css`).
+- Opened from KULT World, the player's own Agent appears on the HUD card and walks the district as its 3D model (`web/kult-agent.js`). Its identity is still the signed launch ticket.
+- All assets, API calls, cookies and the optional Godot bridge support the isolated `/world/syndicates/` mount. If WebGL is unavailable the 2D map and the Jobs page keep every mission playable.
+
+## Earlier releases
+
+### 0.8.0 RC: field guide and decision update
+
+- A four-panel **How to play** guide explains the first operation, resource costs, signed receipts, and crew contributions.
+- An unscouted Heist can spend 2 fictional Intel to survey the entry for a safer but lower-scoring approach. The patrol is not disclosed until this choice is committed. A signed Scout report still gives the stronger route.
+- Crew view shows members' seasonal Influence and their recent recorded contributions. The client displays a return brief only when receipts, member actions, or territory actually changed since that browser last saw the state.
+- New missions use `switchyard-2.1.0`. Pending `switchyard-2.0.0` missions keep their original choices; both receipt versions are supported by the bundled World adapter.
+- [Developer concept and walkthrough](docs/SYNDICATES_WALKTHROUGH_AND_NEXT_BUILD.md) defines the explainer, truth claims, and the next deeper gameplay pass. This build is a first improvement to incomplete-intel decisions, not a proven retention result.
+
+### 0.7.1: desktop layout (superseded by the 3D Switchyard shell)
 
 - A compact desktop command deck brings the 3D district and mission action above the fold on 1024×768 and 1366×768 screens.
 - Briefs show entry cost and the commit action before secondary explanation. Active missions automatically enter the focused map and decision view on PC; Exit focus remains available.
 - Compact map labels adapt to shorter desktop viewports, with a control to reveal all labels. Normal mouse-wheel motion scrolls the page; Ctrl/⌘ + wheel or touchpad pinch zooms the map.
 - A new browser check covers these desktop viewports plus 1920×1080, while the existing mobile and gameplay journeys still pass.
 
-### The underlying 0.7.0 dynamics remain
+### 0.7.0: dynamics (still in force)
 
 - Situational clues alter the right move across Scout, Negotiation, Defense, and Heist. The field note offers rule-based context without revealing future events.
 - A hidden patrol remains server-side until a verified Scout report or resolved receipt reveals it. Active mission state exposes no secret seed, score, or future twist.
@@ -20,21 +47,6 @@ A playable Switchyard district for KULT World: Scout the canal, use verified int
 - Two contributing crew members improve the Workshop discount or Garden Intel bonus. Signed replays show score, resistance, and alert transition.
 
 The first guided operation remains Scout → linked Heist → crew, followed by repeat decisions. These mechanics are a local game release, not a live Mind, 0G, or OKX integration.
-
-## Presentation and platform
-
-- Seven distinct isometric landmarks, clear next-stop guidance, visible route movement, smooth camera focus, pinch zoom, keyboard controls, adjustable labels and a low graphics mode.
-- Labels avoid other labels and the map's interface. The board fits narrow screens more cleanly.
-- A native mobile mission drawer keeps decisions in view and returns the player to the district. Embedded mode retains the experience's navigation.
-- All browser assets, API calls, session cookies and the optional Godot bridge support an isolated `/world/syndicates/` mount. KULT's root API routes remain available to its host.
-- Authenticated Agents have separate request budgets behind a shared World proxy. Invalid tokens do not create independent budgets.
-- The deployment build uses the included Godot export; installing Godot is only necessary if changing that legacy client. The default experience is Three.js. The legacy client is hidden unless `?legacy=1` is supplied.
-
-## Packaging
-
-The previous distributed ZIP was truncated. This replacement is rebuilt from source and checked after saving. Extract the entire ZIP before starting. Run `python VERIFY_BUILD.py` to check all delivered files. Opening `web/index.html` directly does not run the backend.
-
-The UX now includes Focus district mode, larger mobile touch targets, more legible labels, keyboard focus indicators, and a sticky desktop mission console.
 
 ## Quick start (Windows, macOS or Linux)
 
@@ -86,7 +98,7 @@ No token, monetary deposit, real-money reward or live financial settlement is in
 
 ## Verification
 
-See [desktop release notes](docs/RELEASE_0.7.1.md), [dynamics and release evidence](docs/RELEASE_0.7.0.md), [simulation results](docs/SIMULATION_RESULTS.json), and [local HTTPS gateway results](docs/GATEWAY_TEST_RESULTS.json).
+See [the 0.9.0 release notes](docs/RELEASE_0.9.0.md), [the developer walkthrough](docs/SYNDICATES_WALKTHROUGH_AND_NEXT_BUILD.md), [desktop release notes](docs/RELEASE_0.7.1.md), [dynamics and release evidence](docs/RELEASE_0.7.0.md), [simulation results](docs/SIMULATION_RESULTS.json), and [local HTTPS gateway results](docs/GATEWAY_TEST_RESULTS.json). The older browser and simulation results apply to the earlier release; rerun them for 0.8.0 RC in the target environment.
 
 ```bash
 python3 -m unittest discover -s tests -q

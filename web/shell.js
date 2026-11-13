@@ -60,12 +60,21 @@
     refreshLaunch();
   });
   window.KultWorldUI = { openConsole: () => { openConsole(); if (!pages.hidden) closePages(); }, closeConsole };
+  // For the tour: show the world, the Jobs page or one of app.js's tabs.
+  window.KultShell = {
+    open(name) {
+      if (name === 'world') { closePages(); return; }
+      if (name === 'jobs') { if (!jobsOpen) openJobs(); return; }
+      if (api()?.getTab() !== name) $(`#dock [data-tab="${name}"]`)?.click();
+    },
+    openConsole, closeConsole,
+  };
 
   // ---------------------------------------------------------------- help, keys
   const help = $('#map-help-dialog');
   $('#map-help').addEventListener('click', () => help.showModal());
   $('#close-map-help').addEventListener('click', () => help.close());
-  const KEYS = { 1: '[data-page="jobs"]', 2: '[data-tab="social"]', 3: '[data-tab="passport"]', 4: '[data-tab="crew"]', 5: '[data-tab="policy"]', c: '[data-act="console"]' };
+  const KEYS = { 1: '[data-page="jobs"]', 2: '[data-tab="social"]', 3: '[data-tab="passport"]', 4: '[data-tab="crew"]', 5: '[data-tab="policy"]', c: '[data-act="console"]', g: '#how-to-play' };
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName) || $('dialog[open]')) return;
     if (e.key === 'Escape') { if (!pages.hidden) closePages(); else if (!consoleEl.hidden) closeConsole(); return; }

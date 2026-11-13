@@ -1,6 +1,6 @@
 # Deploy the Switchyard inside KULT World
 
-This guide is authoritative for version 0.7.1. The service can run on its own origin or under `/world/syndicates/` on KULT World's origin. Same-origin embedding is supported; cross-origin iframes are intentionally rejected by the existing security policy.
+This guide is authoritative for version 0.9.0. The service can run on its own origin or under `/world/syndicates/` on KULT World's origin. Same-origin embedding is supported; cross-origin iframes are intentionally rejected by the existing security policy.
 
 ## 1. Prepare config and signing material
 
@@ -25,6 +25,7 @@ Use `integration/world-adapter.cjs` on the World server:
 - Redirect or open an iframe to its returned URL. The short-lived ticket is carried in the fragment and removed after consumption. Browser code never receives the shared secrets.
 - Receive callbacks on the configured endpoint. Call `verifyDelivery` with the separate callback secret and the pinned Ed25519 public key, then ingest idempotently into that Agent's Syndicates record.
 - A successful callback must respond with HTTP 200 and `{"ok":true,"receiptId":"the-received-id"}`. The worker retries failures and may repeat a delivery after interruption.
+- **0.9.0:** the adapter must accept `switchyard-2.1.0` and `switchyard-2.2.0` NPC receipts. Update KULT World's copy of the adapter before (or together with) this service, or new receipts are rejected and the World Passport and 0G memory stop updating.
 
 The local HTTPS contract test exercises this sequence with generated fixture identities and a real local receiver. It has not contacted your live World service. One bound Agent per owner is supported in this version.
 
@@ -54,11 +55,11 @@ Check:
 curl -fsS http://127.0.0.1:8787/world/syndicates/api/health
 ```
 
-Expect `ok: true`, `version: "0.7.1-rc.1"`, `schema: 3`, `demo: false`, and `basePath: "/world/syndicates"` in the production configuration. Migration 003 adds the Agent alert column and retains existing missions and signed receipts.
+Expect `ok: true`, `version: "0.9.0-rc.1"`, `schema: 4`, `demo: false`, and `basePath: "/world/syndicates"` in the production configuration. Migration 004 runs on startup and only adds the `rival_moves` and `rival_holds` tables; existing Agents, missions, signed receipts and the signing key are untouched. Migration 003 (from 0.7.0) added the Agent alert column.
 
 ## 5. Verify on the live staging host
 
-Launch an existing test Agent through World, finish Scout and Heist, inspect the linked receipts in both services, then restart the containers and confirm the same identity and history. Verify callback acknowledgment and duplicate handling. Test a physical phone, the mobile console's Back to district control, and List view.
+Launch an existing test Agent through World, finish Scout and Heist, inspect the linked receipts in both services, then restart the containers and confirm the same identity and history. Verify callback acknowledgment and duplicate handling, and that the new `switchyard-2.2.0` receipts reach the World Passport and the Agent's 0G memory. Open Crew to see the rival board, leave and return to check the return brief, and test a physical phone (dock, glass pages and the mission console).
 
 The supplied evidence establishes local gameplay and contract behavior. This environment had no Docker daemon or live KULT credentials, so the built image, live gateway and production load still need the deployment team's checks. Keep the release in staging until those pass.
 
@@ -81,6 +82,6 @@ the district same-origin with World.
 
 ## Upgrades and recovery
 
-Back up the SQLite volume and signing key together. Test restoring them before opening to public traffic. Run a single game service and one worker. The worker delivers at most ten due receipts per cycle; inspect its logs and outbox backlog as traffic grows. Multiple writable replicas require a database/worker coordination change.
+Back up the SQLite volume and signing key together before upgrading (0.9.0 adds migration 004). Test restoring them before opening to public traffic. Run a single game service and one worker. The worker delivers at most ten due receipts per cycle; inspect its logs and outbox backlog as traffic grows. Multiple writable replicas require a database/worker coordination change.
 
 The default UI is Three.js. The optional previous Godot interface is accessible only with `?legacy=1`; its artwork and operation UI were not rebuilt. Do not present it as the new Switchyard interface.

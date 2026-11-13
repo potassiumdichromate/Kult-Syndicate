@@ -14,7 +14,7 @@ class OperationsTests(unittest.TestCase):
  def tearDown(self):self.temp.cleanup()
  def test_new_database_has_versioned_schema(self):
   with self.game.db() as c:
-   self.assertEqual(c.execute('PRAGMA user_version').fetchone()[0],3)
+   self.assertEqual(c.execute('PRAGMA user_version').fetchone()[0],4)
    self.assertIn('next_attempt',[r[1] for r in c.execute('PRAGMA table_info(outbox)')])
  def test_unversioned_database_upgrades_without_losing_history(self):
   session=self.game.login({})
@@ -26,7 +26,7 @@ class OperationsTests(unittest.TestCase):
    c.execute('PRAGMA user_version=0')
   next_game=Game(self.temp.name,demo=True,secret='s'*40)
   self.assertEqual(next_game.state(session['token'])['agent']['id'],session['agent']['id'])
-  with next_game.db() as c:self.assertEqual(c.execute('PRAGMA user_version').fetchone()[0],3)
+  with next_game.db() as c:self.assertEqual(c.execute('PRAGMA user_version').fetchone()[0],4)
  def test_unknown_future_schema_is_rejected(self):
   with self.game.db() as c:c.execute('PRAGMA user_version=99')
   with self.assertRaisesRegex(RuntimeError,'newer than this build'):Game(self.temp.name,demo=True,secret='s'*40)

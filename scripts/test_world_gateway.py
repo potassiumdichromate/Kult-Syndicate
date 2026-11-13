@@ -66,7 +66,7 @@ with tempfile.TemporaryDirectory(prefix='kult-gateway-test-') as tmp:
    assert deliver_once(game,f'https://localhost:{receiver.server_port}/receipt',callback_secret)[0]['delivered']
   finally:urllib.request._opener=previous
   assert len(owner['agent']['syndicatesReceipts'])==2;assert callbacks[-1]['duplicate'];assert not delivery_errors
-  result={'build':'0.7.0-rc.1','fixture':'local HTTPS KULT gateway; no live production endpoint contacted','signed_launch':True,'launch_replay_rejected':True,'secure_scoped_cookie':True,'linked_scout_heist':state['receipts'][0]['context']['scoutReceipt']==state['receipts'][1]['id'],'identity_and_receipts_survive_server_restart':True,'signed_callbacks_verified_by_world_adapter':len(delivered),'duplicate_delivery_deduplicated':True,'passed':True}
+  result={'build':json.loads((Path(__file__).resolve().parents[1]/'package.json').read_text())['version'],'fixture':'local HTTPS KULT gateway; no live production endpoint contacted','signed_launch':True,'launch_replay_rejected':True,'secure_scoped_cookie':True,'linked_scout_heist':state['receipts'][0]['context']['scoutReceipt']==state['receipts'][1]['id'],'identity_and_receipts_survive_server_restart':True,'signed_callbacks_verified_by_world_adapter':len(delivered),'duplicate_delivery_deduplicated':True,'passed':True}
   assert result['linked_scout_heist'];(ROOT/'docs/GATEWAY_TEST_RESULTS.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))
  finally:
   service.shutdown();service.server_close();thread.join();receiver.shutdown();receiver.server_close();rt.join()

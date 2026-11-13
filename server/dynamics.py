@@ -1,7 +1,7 @@
 """Versioned situation rules. All clues and score changes are server owned."""
 import hashlib
 
-VERSION = 'switchyard-2.0.0'
+VERSION = 'switchyard-2.2.0'
 
 def situation(kind, seed, alert, has_lead):
     bits = hashlib.sha256(seed.encode()).digest()
@@ -74,13 +74,15 @@ def apply_stage(kind, step, stage, context):
     else:  # heist
         if step==0:
             patrol=context['patrol'];has_lead=bool(context.get('scoutReceipt'))
-            stage['text']=(f'Your signed Scout report places the patrol at the {patrol}. Take the other route.' if has_lead else
-                           'No verified Scout report. The patrol could be at either entry. This route is a real gamble.')
+            stage['text']=(f'Your signed Scout report places the patrol at the {patrol}. Take the other route for the strongest plan.' if has_lead else
+                           'No verified Scout report. Commit to an uncertain route or spend 2 Intel to survey both entries for a safer, lower-scoring approach.')
             options['canal']['score'],options['gate']['score']=(3,-1) if patrol=='gate' else (-1,3)
             options['gate']['text']='Approach through the main gate'
+            options['survey']['score']=2
             preferred=('gate' if patrol=='canal' else 'canal') if has_lead else None
         elif step==1:
-            stage['text']='A drone guards the crossing. A fresh route signal can bypass it.' if a else 'The canal barrier is sealed. Tools can open it; rerouting leads into a patrol.'
+            surveyed=any(e.get('type')=='choice' and e.get('choice')=='survey' for e in context.get('pastChoices',[]))
+            stage['text']=('Your entry survey found the patrol at the '+context['patrol']+'. ' if surveyed else '')+('A drone guards the crossing. A fresh route signal can bypass it.' if a else 'The canal barrier is sealed. Tools can open it; rerouting leads into a patrol.')
             options['reroute']['score'],options['force']['score']=(3,0) if a else (0,3)
             options['force']['text']='Use 2 Supplies of tools to open the sealed barrier' if not a else 'Force the guarded crossing'
             preferred='reroute' if a else 'force'
@@ -89,7 +91,7 @@ def apply_stage(kind, step, stage, context):
             options['extract']['score'],options['greed']['score']=(2,-1) if b else (2,1)
             options['greed']['text']='Take the extra cache, then extract'
             preferred='extract' if b else 'greed'
-    note=('No verified patrol location. Neither entry can be confirmed safe. A signed Scout result changes this decision.' if kind=='heist' and step==0 and preferred is None else
+    note=('No verified patrol location. Survey costs 2 Intel and earns a safer but smaller tactical score. A signed Scout report makes a stronger route available without that cost.' if kind=='heist' and step==0 and preferred is None else
           'The field clue favors one response, but the cheaper route may protect your budget. Weigh the sign against its cost and the next mission.' if kind=='scout' and step==1 else
           'Compare the field sign with each option. Spending Intel can resolve uncertainty; extra Supplies or alert may cost you the next job.' if kind=='heist' else
           'Read the changing sign, the mission budget, and the next job. The record will show which assumption held.')

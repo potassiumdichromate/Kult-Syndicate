@@ -398,3 +398,85 @@ body.busy .mission-panel { opacity: 0.7; pointer-events: none; }
   .login { padding: 24px 18px 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+/* ---------------------------------------------------------------- 0.9.0: return brief, rivals, field guide */
+.return-brief { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); z-index: 13; display: flex; align-items: center; gap: 14px; width: min(620px, calc(100vw - 680px)); min-width: 420px; padding: 12px 12px 12px 14px; border-color: rgba(255, 201, 77, 0.45); animation: dropin 0.45s cubic-bezier(.2, 1.3, .4, 1); }
+@keyframes dropin { from { transform: translate(-50%, -14px); opacity: 0; } }
+.rb-ico { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 12px; background: linear-gradient(135deg, var(--gold), var(--orange)); box-shadow: 0 0 16px rgba(255, 201, 77, 0.45); }
+.rb-ico svg { width: 20px; height: 20px; fill: none; stroke: #2b1700; stroke-width: 2.2; stroke-linecap: round; }
+.return-brief > div { flex: 1; min-width: 0; }
+.return-brief small { font: 700 9.5px var(--display); letter-spacing: 0.18em; color: var(--gold); }
+.return-brief h2 { margin: 1px 0 2px; font-size: 15px; }
+.return-brief p { margin: 0; font-size: 12px; color: var(--muted); }
+.return-brief .primary { flex: none; padding: 9px 14px; font-size: 11px; }
+.rival-board { margin-bottom: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.rival-board > p.eyebrow { grid-column: 1 / -1; margin: 0; padding: 0; border: 0; background: none; font-size: 11px; color: var(--gold); }
+.rival-board > p { margin: 0; padding: 12px 14px; border-radius: 14px; font-size: 12.5px; color: var(--muted); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--stroke); border-top: 2px solid var(--rc, var(--violet)); }
+.rival-board > p:nth-of-type(2) { --rc: var(--red); } .rival-board > p:nth-of-type(3) { --rc: var(--blue); } .rival-board > p:nth-of-type(4) { --rc: var(--gold); }
+.rival-board > p b { display: block; margin-bottom: 2px; font: 700 15px var(--display); color: var(--text); }
+.crew-activity { margin-top: 12px; }
+.crew-activity p { margin: 6px 0; font-size: 13px; color: var(--muted); }
+.crew-activity p b { color: var(--text); }
+#guide-modal { width: min(540px, calc(100vw - 32px)); }
+#guide-modal > p { margin: 14px 0; line-height: 1.65; color: var(--muted); }
+.guide-meter { display: flex; gap: 6px; margin: 4px 0 14px; }
+.guide-meter i { flex: 1; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
+.guide-meter i.active { background: linear-gradient(90deg, var(--orange), var(--pink)); box-shadow: 0 0 8px rgba(255, 106, 61, 0.6); }
+.guide-link { font: 700 12px var(--display); letter-spacing: 0.06em; }
+@media (max-width: 1200px) { .return-brief { left: 14px; transform: none; width: min(520px, calc(100vw - 330px)); min-width: 0; animation: none; } }
+@media (max-width: 760px) {
+  .return-brief { top: 118px; left: 10px; right: 10px; width: auto; transform: none; flex-wrap: wrap; animation: none; }
+  .return-brief > div { flex-basis: calc(100% - 100px); }
+  .return-brief .primary { flex: 1; }
+  .rival-board { grid-template-columns: 1fr; }
+}
+/* Seven dock buttons: at mid widths shrink the dock and keep it clear of the minimap and map tools, as KULT World does. */
+@media (min-width: 761px) and (max-width: 1280px) {
+  .dock { left: calc((100vw - 270px) / 2); }
+  .dock button { width: 66px; gap: 4px; }
+  .dk-ico { width: 42px; height: 42px; border-radius: 13px; } .dk-ico svg { width: 21px; height: 21px; }
+  .dock .dl { font-size: 10px; }
+}
+@media (min-width: 761px) and (max-width: 900px) { .dock .dl { display: none; } .dock button { width: 52px; } }
+@media (max-width: 760px) { .dock .dl { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 8.5px; } }
+@media (max-width: 520px) { .dock .dl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .dock button { padding: 4px 2px; } }
+
+/* ---------------------------------------------------------------- first-visit tour (tour.js) */
+.tour { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.tour-shade { position: fixed; pointer-events: auto; background: rgba(6, 2, 18, 0.62); }
+.tour-cover { position: fixed; pointer-events: auto; }
+.tour-hole { position: fixed; pointer-events: none; border-radius: 16px; border: 2px solid var(--gold); box-shadow: 0 0 18px rgba(255, 201, 77, 0.6), inset 0 0 14px rgba(255, 201, 77, 0.25); transition: left 0.25s, top 0.25s, width 0.25s, height 0.25s; }
+.tour-hole::after { content: ""; position: absolute; inset: -6px; border-radius: inherit; border: 2px solid rgba(255, 236, 190, 0.85); opacity: 0; animation: tour-ring 1.2s ease-in-out infinite alternate; }
+@keyframes tour-ring { to { opacity: 1; } }
+.tour-hole.nudge { animation: tour-nudge 0.4s; }
+@keyframes tour-nudge { 30% { transform: scale(1.03); } 60% { transform: scale(0.99); } }
+.tour-card { position: fixed; display: flex; gap: 16px; width: min(500px, calc(100vw - 32px)); padding: 16px; pointer-events: auto; border-color: rgba(255, 201, 77, 0.45); background: linear-gradient(155deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02) 40%), rgba(22, 14, 46, 0.9); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 18px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 106, 61, 0.18); transition: left 0.3s, top 0.3s; }
+.tour-card.in { animation: tour-in 0.4s cubic-bezier(0.2, 1.3, 0.4, 1); }
+@keyframes tour-in { from { transform: translateY(10px) scale(0.98); } }
+.tour.center .tour-card { left: 50% !important; top: 50% !important; translate: -50% -50%; width: min(580px, calc(100vw - 32px)); padding: 20px; }
+.tour-face { position: relative; flex: none; width: 84px; height: 104px; border-radius: 16px; overflow: visible; background: radial-gradient(circle at 50% 30%, #4a2a7a, #120b28); box-shadow: 0 0 0 2px var(--orange), 0 0 20px rgba(255, 106, 61, 0.5); }
+.tour-face img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; }
+.tour-face .hood { inset: 16px 16px 0; }
+.tour-face .hood i { width: 11px; height: 4px; }
+.tour-name { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 10px; border-radius: 999px; font: 700 10px var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: #2b1700; background: linear-gradient(135deg, #fff1c4, var(--gold)); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); }
+.tour-say { flex: 1; min-width: 0; display: grid; gap: 6px; align-content: start; }
+.tour-chapter { margin: 0; font: 700 10.5px var(--display); letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
+.tour-title { margin: 0; font-size: 18px; }
+.tour-text { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+.tour-btns { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.tour-btns .primary, .tour-btns .ghost { padding: 9px 16px; font-size: 11.5px; }
+.tour-skip { margin-right: auto; padding: 4px 0; border: 0; background: none; font: 600 12px var(--body); color: var(--dim); text-decoration: underline; text-underline-offset: 3px; }
+.tour-skip:hover { color: var(--text); }
+.tour-pills { display: flex; gap: 4px; margin-top: 4px; }
+.tour-pills button { flex: 1; height: 22px; padding: 0; border-radius: 7px; border: 1px solid var(--stroke); background: rgba(255, 255, 255, 0.04); font: 700 10px var(--display); color: var(--dim); }
+.tour-pills button.done { color: var(--muted); background: rgba(255, 106, 61, 0.12); border-color: rgba(255, 106, 61, 0.35); }
+.tour-pills button.on { color: #fff; border-color: var(--orange); background: linear-gradient(135deg, var(--orange), var(--pink)); box-shadow: 0 0 10px rgba(255, 106, 61, 0.5); }
+.tour-pills button:hover:not(.on) { color: var(--text); border-color: var(--stroke-2); }
+body.touring #return-brief { display: none !important; }
+@media (max-width: 700px) {
+  .tour-card { width: calc(100vw - 20px); left: 10px !important; gap: 12px; padding: 12px; }
+  .tour.center .tour-card { left: 50% !important; }
+  .tour-face { width: 56px; height: 70px; }
+  .tour-name { display: none; }
+  .tour-title { font-size: 15px; } .tour-text { font-size: 12.5px; }
+}
