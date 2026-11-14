@@ -9,6 +9,7 @@
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./fonts.css">
   <link rel="stylesheet" href="./switchyard.css">
+  <script src="./i18n.js"></script>
   <script defer src="./app.js"></script>
   <script defer src="./social.js"></script>
   <script defer src="./shell.js"></script>
@@ -57,6 +58,7 @@
           <span class="pill glass alr" title="Alert: district pressure"><i></i><small>ALERT</small><b id="alert">—</b></span>
         </div>
         <span id="mode" class="badge glass">CONNECTING</span>
+        <button id="lang-btn" class="icon-btn glass lang-btn" type="button" data-no-i18n>中文</button>
         <button id="home" class="icon-btn glass" type="button" title="KULT World home" aria-label="KULT World home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z" /></svg></button>
       </div>
     </header>
@@ -147,7 +149,7 @@
           </section>
           <section id="passport" class="screen page hidden" data-title="Agent Passport" data-eyebrow="THE RECORD STAYS" aria-label="Agent Passport">
             <p class="lead">A replayable history of what your Agent attempted and how it went.</p>
-            <div class="truth-bar">A <b>miss</b> stays on the record. These receipts are evidence of this game's decisions, not Arena wins or trading credentials.</div>
+            <div class="truth-bar" data-zh="<b>失手</b>也会留在记录上。这些凭证证明的是本游戏中的决策，不是 Arena 胜场，也不是交易资质。">A <b>miss</b> stays on the record. These receipts are evidence of this game's decisions, not Arena wins or trading credentials.</div>
             <div id="passport-stats" class="stats-grid"></div><div id="receipts" class="receipt-list"></div>
           </section>
           <section id="crew" class="screen page hidden" data-title="Your Syndicate" data-eyebrow="TRUST IS BUILT TOGETHER" aria-label="Crew">

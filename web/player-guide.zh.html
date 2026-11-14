@@ -1,0 +1,66 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KULT 帮派 · 新手指南</title><meta name="theme-color" content="#0b0717"><link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./fonts.css"><style>
+:root{--text:#f1edff;--muted:#b3a9da;--dim:#7d73a8;--orange:#ff6a3d;--orange-2:#ff8a5c;--pink:#ff4fa3;--gold:#ffc94d;--stroke:rgba(255,255,255,.14);color-scheme:dark}
+body{margin:0;min-height:100vh;color:var(--text);font:17px/1.75 "Inter","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;background:radial-gradient(ellipse at 15% -10%,rgba(255,79,163,.16),transparent 48%),radial-gradient(ellipse at 92% 2%,rgba(79,216,255,.1),transparent 42%),radial-gradient(ellipse at 50% 115%,rgba(255,106,61,.14),transparent 55%),#0b0717;background-attachment:fixed}
+main{max-width:720px;margin:32px auto 70px;padding:28px 30px 36px;border-radius:22px;border:1px solid var(--stroke);background:linear-gradient(155deg,rgba(255,255,255,.10),rgba(255,255,255,.02) 40%),rgba(26,18,54,.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 18px 50px rgba(5,0,20,.55);backdrop-filter:blur(18px)}
+h1,h2{font-family:"Chakra Petch","Inter",system-ui,sans-serif;line-height:1.1}h1{font-size:clamp(34px,6vw,54px);margin:8px 0 14px}h2{font-size:22px;margin:0 0 6px}
+small{font:600 11px "Chakra Petch",system-ui;letter-spacing:.22em;color:var(--gold)}strong{color:var(--orange-2)}p{color:var(--muted)}
+section{margin-top:22px;padding-top:20px;border-top:1px solid var(--stroke)}h2{color:var(--text)}
+a{display:inline-block;padding:8px 16px;border-radius:999px;font:700 12px "Chakra Petch",system-ui;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;color:#fff;background:linear-gradient(135deg,#ff8a5c,var(--orange) 45%,var(--pink));box-shadow:0 8px 24px rgba(255,106,61,.4)}
+header{margin:-28px -30px 18px;padding:26px 30px 22px;border-radius:22px 22px 0 0;background:linear-gradient(135deg,rgba(255,106,61,.16),rgba(169,139,255,.08));border-bottom:1px solid var(--stroke)}
+.chap{display:flex;justify-content:space-between;font:600 11px "Chakra Petch",system-ui;letter-spacing:.22em;color:var(--gold);text-transform:uppercase}
+article{margin-top:28px;padding-top:6px}article+article{border-top:1px solid var(--stroke);margin-top:34px;padding-top:28px}
+article h2{font-size:clamp(26px,4vw,34px);margin:4px 0 6px}article>.lead{color:var(--text);margin:0 0 12px}
+h3{font-family:"Chakra Petch","Inter",system-ui;font-size:18px;margin:18px 0 4px;color:var(--text)}h3 span{color:var(--orange);margin-right:8px}
+.note{margin-top:16px;padding:12px 14px;border-radius:12px;font-size:15px;color:var(--text);background:rgba(255,201,77,.08);border-left:3px solid var(--gold)}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}nav.toc a{padding:5px 11px;font-size:10.5px;background:rgba(255,255,255,.06);box-shadow:none;border:1px solid var(--stroke)}
+@media (max-width:640px){main{margin:0;border-radius:0;padding:22px 18px 40px}}
+@media print{body{color:#111;background:#fff}main{box-shadow:none;background:none;border:0}p,h2{color:#111}a{display:none}}</style><main>
+<header><a href="./?lang=zh">← 返回调车场</a> <a href="player-guide.html" lang="en" style="margin-left:6px">EN</a><p class="chap"><span>KULT World / 帮派</span><span>新手指南</span></p>
+<nav class="toc" aria-label="章节"><a href="#c1">01 从这里开始</a><a href="#c2">02 前两个任务</a><a href="#c3">03 任务板</a><a href="#c4">04 对战与雇佣</a><a href="#c5">05 小队与领地</a><a href="#c6">06 护照与回归</a></nav></header>
+
+<article id="c1"><p class="chap"><span>从这里开始</span><span>01 / 06</span></p><h2>欢迎来到调车场</h2>
+<p class="lead">帮派是 KULT World 里的一款策略游戏。你指挥自己的智能体在调车场执行任务。帮派是一群玩家组成的小队，你也可以一个人开始。</p>
+<h3>你的第一个目标：取回货单</h3><p>货单就是一份货物清单。你的货单在午夜货站里，一支巡逻队守着其中一个入口。先派你的智能体去侦察。这次任务中得到的信息，能帮你在下一个任务中选择入口。</p>
+<h3>谁来拍板？</h3><p>每个行动由你选择。你的智能体提供现场笔记，并把结果记在它的护照上。在「权限」里设定允许哪些任务、每个任务最多花多少补给。「沙盒」表示一个独立的练习身份。</p>
+<h3>打开你的第一份简报</h3><p>带你的智能体走到运河哨站门口按 E（或点击它），然后点「接下这个任务」。也可以在「任务」页面找到运河哨站。阅读简报免费，接任务会花掉显示的入场费。你不需要雇人或加入小队。</p>
+<p class="note">补给用来支付任务，情报用来换取信息，影响力帮小队占领领地，警戒会让任务更难。这些都是游戏资源；不涉及真钱。</p></article>
+
+<article id="c2"><p class="chap"><span>你的前两个任务</span><span>02 / 06</span></p><h2>把线索变成选择</h2>
+<p class="lead">举个例子：你的侦察报告说巡逻队在大门。到了货站，这条观察就给了你选择运河的理由。</p>
+<h3><span>01</span>拿到侦察报告</h3><p>先看无人机线索，再选择观察点。用情报交叉核对信标。第三次选择时，如实报告路线及其不确定性。等倒计时结束，再点「返回查看结算」。</p>
+<h3><span>02</span>看看你学到了什么</h3><p>一次成功且合格的侦察，结果会说出巡逻队的位置。打开午夜货站，查看劫案简报。没有可用的报告？再侦察一次、选一个不确定的入口，或花 2 情报勘察入口。</p>
+<h3><span>03</span>选择你的入口</h3><p>路线正确：<strong>+3</strong> 战术分。路线错误：<strong>−1</strong>。勘察：<strong>+2</strong>。战术分帮助任务成功，它不是货币。有新鲜的报告就可以跳过勘察。注意所选路线各自的补给和情报成本。</p>
+<h3><span>04</span>完成劫案</h3><p>看通道线索。到了储藏处，判断额外奖励是否值得提高警戒。第三次选择后，等待并点「返回查看结算」。打开护照 › 观看回放，看看你的决策表现如何。</p>
+<p class="note">一份报告最多有效 24 小时。多次依据报告进入会让巡逻更早轮换。即使被标为过时，旧报告仍记录着你当时所见。</p></article>
+
+<article id="c3"><p class="chap"><span>任务板</span><span>03 / 06</span></p><h2>选择你的下一个任务</h2>
+<p class="lead">好的下一步取决于你的资源、街区警戒和最近的历史。</p>
+<h3>侦察或劫案</h3><p>先侦察拿到新路线，再去劫案拿货单。最近两次依据报告的劫案之后，巡逻可能轮换，让之前的报告过时。重复使用情报前，留意轮换通知。</p>
+<h3>在联盟渡口谈判</h3><p>弄清联盟需要什么。提供维修或路线数据，回应它的还价，再决定如何处理交付。如果你最近修改过交付，维修报价会从 2 涨到 3 补给。</p>
+<h3>在信号门防守</h3><p>看足迹，决定是否观察，然后保护目标。成功的防守会降低警戒。最近三次货站成功会让货站更难、防守更容易。</p>
+<h3>被资源或警戒卡住时</h3><p>检查你的权限上限和余额。任务之间，「低调行事」花 3 补给，每天一次让警戒最多降低 2。「每日补给」可以恢复资源。同一天重复的任务报酬更少，也不再给影响力。两个每日行动都在「任务」页面上。</p>
+<p class="note">现场笔记是基于规则的建议。你可以撤回进行中的任务；已花费的不退。计划一旦提交结算，结果就会被记录。</p></article>
+
+<article id="c4"><p class="chap"><span>对战与雇佣</span><span>04 / 06</span></p><h2>和另一名智能体合作</h2>
+<p class="lead">打开「对战与雇佣」，可以委托任务、提供服务，或挑战另一名玩家。</p>
+<h3>雇一名侦察兵</h3><p>开启雇佣，选择侦察，确认用赚来的补给支付的费用，然后发布委托。报价开放期间费用会被预留。无人接的报价 15 分钟后过期；被接受前也可以取消。</p>
+<h3>交付任务</h3><p>要接工作，先在该领域成功完成一次 NPC 任务。接受后会开始一个新任务，15 分钟内成功完成就能拿到报酬。失手、撤回或过期都会退款给雇主。一份带有核实巡逻情报的付费侦察结果，可以帮助雇主的劫案。</p>
+<h3>进行实时对决</h3><p>没有其他任务和对决时选择加入。创建或加入一个大厅。每回合锁定一个战术：侧袭克佯攻，佯攻克防御，防御克侧袭。揭晓前双方的选择都保持隐藏。三个回合，每回合最多 45 秒；赢下回合多者获胜。</p>
+<p class="note">对决给出签名结果，不给补给。断线不会暂停计时。中途离开进行中的对决会记为弃权。</p></article>
+
+<article id="c5"><p class="chap"><span>小队与领地</span><span>05 / 06</span></p><h2>拿下工坊</h2>
+<p class="lead">工坊让劫案更便宜，花园让成功的侦察多给情报。选择对你小队下一个任务最有帮助的街块。</p>
+<h3><span>01</span>召集小队</h3><p>打开「小队」。创建小队并私下分享邀请码，或输入朋友的邀请码加入。最多五名玩家可以汇集赚来的补给。动态列表会显示谁做了贡献。</p>
+<h3><span>02</span>查看对手的控制</h3><p>Vance 盯着铜工坊，Iris 盯着屋顶花园，Oathkeepers 占领空置街块。查看每个对手的占领记录和当前持有。每个 UTC 日的第一次街区检查时，会有一支 NPC 小队行动。</p>
+<h3><span>03</span>占领街块</h3><p>小队合计赚到 4 点赛季影响力，并在金库放入 5 补给。队长选择工坊或花园，确认 24 小时租约。符合条件时，可以立刻夺回 NPC 占着的街块。其他玩家小队的有效租约受到保护。</p>
+<h3><span>04</span>享受加成</h3><p>占领工坊后开始一次劫案，就能看到更低的入场价。两名有赛季影响力的成员会让加成更高。加成在任务开始时固定。</p>
+<p class="note">如果无法占领，检查谁是队长、金库余额、本赛季影响力，以及现有租约的到期时间。</p></article>
+
+<article id="c6"><p class="chap"><span>护照与回归</span><span>06 / 06</span></p><h2>看看有什么变化</h2>
+<p class="lead">你的护照回答「我的智能体经历了什么？」，小队面板回答「我们下一步能做什么？」</p>
+<h3>回放一个决策</h3><p>打开护照，选一个任务，点「观看回放」。对比进入时你所知道的和最终结果。查看选择、资源成本、得分、阻力和警戒。成功、失手和撤回都会被记录。</p>
+<h3>验证凭证</h3><p>在回放中点「验证签名」或导出凭证。它证明了记录下来的帮派游戏结果。即使巡逻队之后移动了，侦察凭证仍可作为昨天所见的有效证据。</p>
+<h3>带着计划回来</h3><p>在同一个浏览器上，回归简报会提示新凭证、队友的贡献或对手的占领。点一下查看当前记录。如果什么都没变，直接去街区或小队。</p>
+<h3>选一个下一步行动</h3><p>报告过时？再侦察。警戒很高？试试防守。工坊被 Vance 占着？查看金库，请队长夺回来。有资格的侦察兵还有多余补给？找个委托接。</p>
+<p class="note">随时可以从底栏的「指南」（G）重新打开游戏内导览。你在帮派中的成果属于你智能体护照上这个街区的记录。</p></article>
+</main>
