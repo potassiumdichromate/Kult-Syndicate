@@ -484,3 +484,63 @@ body.touring #return-brief { display: none !important; }
 /* Language toggle and Chinese fonts (i18n.js) */
 .lang-btn { width: auto; min-width: 42px; padding: 0 10px; font: 700 12px/1 var(--display); letter-spacing: .04em; }
 html.lang-zh { --body: "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; --display: "Chakra Petch", "Inter", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; }
+
+/* ---------------------------------------------------------------- phones: one clear screen
+   Top: the Agent and the four resources. Bottom: the dock, and above it the
+   operation as one compact card (title, next stop, the main action). Right
+   edge: map, labels and help; the minimap opens from the map button; pinch
+   zooms. Place pins show only their dot unless they are the next stop or open,
+   and world.js hides any pin that would overlap the HUD or another pin. */
+.place-pin { transition: opacity 0.2s; }
+.place-pin.cull { opacity: 0 !important; pointer-events: none !important; }
+.phone-only { display: none !important; }
+@media (max-width: 760px) {
+  .phone-only { display: grid !important; }
+  .hud-top { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; gap: 6px; }
+  .hud-player { padding: 5px 10px 5px 5px; gap: 9px; }
+  .hud-player .portrait, .kw-agent-portrait { width: 38px; height: 38px; border-radius: 11px; }
+  .hp-main .eyebrow, .hp-memory, .kw-agent-tags { display: none; }
+  .hp-main h2 { font-size: 14px; }
+  .hp-sub { font-size: 10px; }
+  .hud-right { gap: 6px; }
+  .resources { gap: 4px; min-width: 0; }
+  .pill { padding: 5px 8px 5px 5px; gap: 5px; min-width: 0; }
+  .pill i { width: 15px; height: 15px; }
+  .pill b { font-size: 13px; }
+  .hud-right .icon-btn { width: 36px; height: 36px; border-radius: 11px; flex: none; }
+  .hud-right .lang-btn { width: auto; min-width: 40px; padding: 0 8px; font-size: 11px; white-space: nowrap; }
+
+  .quest-tracker { top: auto !important; left: 8px !important; right: 8px !important; width: auto !important; bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+    max-height: 46vh; padding: 10px 12px !important; gap: 6px !important; border-radius: 16px; }
+  .qt-head { font-size: 9.5px; letter-spacing: 0.14em; }
+  .qt-head span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .quest-tracker h3 { font-size: 14px !important; }
+  .quest-tracker #operation-detail, .quest-tracker .journey, .quest-tracker .qt-story, #operation-hire { display: none !important; }
+  .qt-next { padding: 6px 10px; }
+  .qt-next b { font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qt-actions { grid-template-columns: 1fr !important; }
+  .qt-actions .primary { padding: 9px 12px; }
+  body:has(.quest-tracker) .map-tools, body:has(.quest-tracker) .minimap { z-index: 11; }
+
+  .minimap { display: none; }
+  body.mm-open .minimap { display: block; top: 116px; right: 8px; bottom: auto; padding: 6px; }
+  body.mm-open .minimap canvas { width: 132px; height: 132px; }
+  .map-tools { top: 116px !important; right: 8px !important; bottom: auto !important; padding: 4px !important; gap: 2px; border-radius: 14px; }
+  body.mm-open .map-tools { top: 268px !important; }
+  .map-tools #zoom-in, .map-tools #zoom-out, .map-tools #map-quality { display: none; }
+  .map-tools button { width: 34px !important; height: 34px !important; }
+
+  .place-pin:not(.priority):not(.active) .pin-copy { display: none; }
+  .place-pin:not(.priority):not(.active) { padding: 4px; }
+  .place-pin .pin-copy small { display: none; }
+  .world-tip { padding: 6px 10px; }
+  .world-tip b { font-size: 12px; }
+
+  .dock { bottom: max(8px, env(safe-area-inset-bottom)); padding: 5px; }
+  .dk-ico { width: 38px; height: 38px; border-radius: 12px; }
+  .dk-ico svg { width: 19px; height: 19px; }
+  #notice { top: 112px; left: 8px; right: 54px; max-width: none; font-size: 12px; }
+  .console { bottom: calc(76px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 190px); }
+  body.console-open .quest-tracker { display: none; }
+  body.console-open .tags-layer, body.console-open .world-tip { visibility: hidden; }
+}

@@ -551,6 +551,23 @@ function start() {
   // ---------------------------------------------------------------- frame
   const tip = $('#world-tip'), proj = new THREE.Vector3();
   let prev = 0, elapsed = 0, frame = 0, lastDoor = null;
+  // Place pins never sit under the HUD, the operation card, the dock or the
+  // map tools, nor on top of each other: the next stop, the open place and the
+  // nearest door win; a pin that would overlap one already placed is hidden.
+  const RESERVED = '.hud-top > *, .quest-tracker, .dock, .map-tools, .minimap, #world-tip, #agent-console:not([hidden]), #open-agent-console:not([hidden]), #notice:not(:empty)';
+  function declutterPins() {
+    const taken = [];
+    for (const el of document.querySelectorAll(RESERVED)) { if (!el.getClientRects().length) continue; const r = el.getBoundingClientRect(); if (r.width) taken.push(r); }
+    const near = nearDoor();
+    const list = pins.filter((p) => p.el.style.visibility !== 'hidden').map((p) => ({ p, r: p.el.getBoundingClientRect(),
+      pri: p.el.classList.contains('priority') ? 0 : p.el.classList.contains('active') ? 1 : near && p.el.dataset.location === near.id ? 2 : 3 }));
+    list.sort((a, b) => a.pri - b.pri);
+    for (const it of list) {
+      const r = it.r, hit = r.width > 0 && taken.some((t) => r.left < t.right + 4 && r.right > t.left - 4 && r.top < t.bottom + 4 && r.bottom > t.top - 4);
+      if (it.p.el.classList.contains('cull') !== hit) it.p.el.classList.toggle('cull', hit);
+      if (!hit) taken.push(r);
+    }
+  }
   function placeLabels() {
     for (const p of pins) {
       proj.copy(p.pos).project(camera);
@@ -559,6 +576,7 @@ function start() {
       p.el.style.transform = `translate(${((proj.x + 1) / 2) * size.w}px, ${((1 - proj.y) / 2) * size.h}px) translate(-50%, -100%)`;
       p.el.style.zIndex = String(1000 - Math.round(proj.z * 500));
     }
+    if (frame % 6 === 0) declutterPins();
     proj.copy(player.group.position).setY(player.gy + T * 0.62).project(camera);
     tag.style.transform = `translate(${((proj.x + 1) / 2) * size.w}px, ${((1 - proj.y) / 2) * size.h}px) translate(-50%, -100%)`;
     const d = nearDoor();

@@ -82,6 +82,9 @@
     if (sel && api()?.getState?.()) { e.preventDefault(); $('#dock ' + sel)?.click(); }
   });
 
+  // Phones keep the minimap behind the map button.
+  $('#map-toggle')?.addEventListener('click', () => { const on = document.body.classList.toggle('mm-open'); $('#map-toggle').setAttribute('aria-pressed', String(on)); });
+
   // ---------------------------------------------------------------- minimap
   const mm = $('#minimap'), g = mm.getContext('2d'), N = 12, C = mm.width / N;
   const COLOR = { plaza: '#e6cfa8', road: '#b9ab98', junction: '#b9ab98', rail: '#a88a6a', canal: '#3fa6a0', bridge: '#d9b98c' };
