@@ -84,13 +84,13 @@
 
   // ---------------------------------------------------------------- minimap
   const mm = $('#minimap'), g = mm.getContext('2d'), N = 12, C = mm.width / N;
-  const COLOR = { plaza: '#2e2257', road: '#171230', junction: '#171230', rail: '#3a2c4a', canal: '#2bb8d8', bridge: '#9c8cc8' };
-  const KIND = { home: '#ffb27a', scout: '#4fd8ff', negotiate: '#6ff0a6', heist: '#ff6a3d', defend: '#a98bff', territory: '#ffc94d' };
+  const COLOR = { plaza: '#e6cfa8', road: '#b9ab98', junction: '#b9ab98', rail: '#a88a6a', canal: '#3fa6a0', bridge: '#d9b98c' };
+  const KIND = { home: '#e0622c', scout: '#1f8a8a', negotiate: '#3b8f4a', heist: '#c23b3b', defend: '#7a5ea8', territory: '#c8901f' };
   let ground = null;
   function drawGround(d) {
     ground = document.createElement('canvas'); ground.width = mm.width; ground.height = mm.height; const q = ground.getContext('2d');
-    q.fillStyle = '#120b28'; q.fillRect(0, 0, mm.width, mm.height);
-    for (let gx = -1; gx <= 10; gx++) for (let gy = -1; gy <= 10; gy++) { q.fillStyle = COLOR[d.tileAt(gx, gy)[0]] || '#2e2257'; q.fillRect((gx + 1) * C + 1, (gy + 1) * C + 1, C - 2, C - 2); }
+    q.fillStyle = '#f3e6d2'; q.fillRect(0, 0, mm.width, mm.height);
+    for (let gx = -1; gx <= 10; gx++) for (let gy = -1; gy <= 10; gy++) { q.fillStyle = COLOR[d.tileAt(gx, gy)[0]] || '#e6cfa8'; q.fillRect((gx + 1) * C + 1, (gy + 1) * C + 1, C - 2, C - 2); }
   }
   function drawMinimap(t) {
     const d = window.kultDistrict, s = api()?.getState?.(); if (!d || !s) return;
@@ -99,11 +99,11 @@
     for (const b of s.blocks) {
       const x = (b.x + 1) * C, y = (b.y + 1) * C;
       g.fillStyle = KIND[b.kind]; g.globalAlpha = 0.9; g.fillRect(x + 4, y + 4, C - 8, C - 8); g.globalAlpha = 1;
-      if (b.id === d.nextId) { g.strokeStyle = '#ff6a3d'; g.lineWidth = 3; g.beginPath(); g.arc(x + C / 2, y + C / 2, C * (0.62 + Math.sin(t / 300) * 0.08), 0, Math.PI * 2); g.stroke(); }
+      if (b.id === d.nextId) { g.strokeStyle = '#e0622c'; g.lineWidth = 3; g.beginPath(); g.arc(x + C / 2, y + C / 2, C * (0.62 + Math.sin(t / 300) * 0.08), 0, Math.PI * 2); g.stroke(); }
     }
     const p = d.player, px = (p.x + 1.5) * C, py = (p.y + 1.5) * C;
     g.save(); g.translate(px, py); g.rotate(-p.yaw + Math.PI);
-    g.fillStyle = '#fff'; g.shadowColor = '#ff6a3d'; g.shadowBlur = 12; g.beginPath(); g.moveTo(0, -11); g.lineTo(8, 8); g.lineTo(0, 4); g.lineTo(-8, 8); g.closePath(); g.fill(); g.restore();
+    g.fillStyle = '#2a2420'; g.shadowColor = 'rgba(255,255,255,0.9)'; g.shadowBlur = 4; g.beginPath(); g.moveTo(0, -11); g.lineTo(8, 8); g.lineTo(0, 4); g.lineTo(-8, 8); g.closePath(); g.fill(); g.restore();
     const near = s.blocks.reduce((best, b) => { const k = Math.hypot(b.x - p.x, b.y - p.y); return k < best.k ? { b, k } : best; }, { b: null, k: 2.2 }).b;
     const place = near ? near.name : 'District 01'; if ($('#mm-place').textContent !== place) $('#mm-place').textContent = place;
   }

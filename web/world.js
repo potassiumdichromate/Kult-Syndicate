@@ -21,7 +21,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const here = (p) => new URL(p, import.meta.url).href;
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 // Bump when the models change: .glb files are cached for a day.
-const MODELS_V = 'remesh-1';
+const MODELS_V = 'golden-hour-1';
 const load = (p) => loader.loadAsync(here(p) + '?v=' + MODELS_V);
 
 // ------------------------------------------------------------------ the grid
@@ -82,7 +82,10 @@ function neonMask(map, max = 1024) {
 // Meshy exports full metal; with no environment to reflect it reads dark, so
 // treat the texture as painted surface, then light its neon. "lite" (small
 // props, the rock) gets a half-size glow mask to save GPU memory.
+// Daylight: the old neon emission is kept only as a faint warm lift.
+const GLOW_K = 0.18;
 function dress(obj, { shadows = true, glow = 1.1, lite = false } = {}) {
+  glow *= GLOW_K;
   obj.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = shadows; o.receiveShadow = true;
@@ -122,30 +125,20 @@ function fit(obj, width, height) {
 
 // ------------------------------------------------------------------ sky
 function skyTexture() {
+  // Golden hour: a warm peach sky over a pale amber horizon, soft clouds and a
+  // low sun. Kult World keeps the night; the Tower keeps the blue sky.
   const c = document.createElement('canvas'); c.width = c.height = 1024;
   const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 1024);
-  gr.addColorStop(0, '#08051f'); gr.addColorStop(0.42, '#26105a'); gr.addColorStop(0.72, '#6a2a7a'); gr.addColorStop(0.9, '#c2508c'); gr.addColorStop(1, '#ff9a7a');
+  gr.addColorStop(0, '#f2b98f'); gr.addColorStop(0.45, '#f8d3a6'); gr.addColorStop(0.8, '#fde8c8'); gr.addColorStop(1, '#fff4e2');
   g.fillStyle = gr; g.fillRect(0, 0, 1024, 1024);
-  for (let i = 0; i < 3; i++) {
-    const ag = g.createLinearGradient(0, 120 + i * 70, 0, 260 + i * 70); ag.addColorStop(0, 'rgba(79,216,255,0)'); ag.addColorStop(0.5, i === 1 ? 'rgba(255,106,61,0.16)' : 'rgba(79,216,255,0.13)'); ag.addColorStop(1, 'rgba(79,216,255,0)');
-    g.fillStyle = ag; g.beginPath(); g.moveTo(0, 200 + i * 60);
-    for (let x = 0; x <= 1024; x += 32) g.lineTo(x, 160 + i * 60 + Math.sin(x / 120 + i * 2) * 40);
-    g.lineTo(1024, 320 + i * 60); for (let x = 1024; x >= 0; x -= 32) g.lineTo(x, 260 + i * 60 + Math.sin(x / 140 + i) * 30); g.fill();
+  const sun = g.createRadialGradient(780, 640, 10, 780, 640, 420); sun.addColorStop(0, 'rgba(255,248,226,0.95)'); sun.addColorStop(0.25, 'rgba(255,226,170,0.5)'); sun.addColorStop(1, 'rgba(255,214,160,0)');
+  g.fillStyle = sun; g.fillRect(0, 0, 1024, 1024);
+  const puff = (x, y, r) => { const p = g.createRadialGradient(x, y, 0, x, y, r); p.addColorStop(0, 'rgba(255,246,236,0.85)'); p.addColorStop(0.6, 'rgba(255,232,214,0.5)'); p.addColorStop(1, 'rgba(255,226,206,0)'); g.fillStyle = p; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
+  let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (const [cx, cy, n, size] of [[170, 240, 7, 58], [700, 170, 8, 66], [480, 400, 6, 48], [80, 540, 5, 42], [930, 470, 6, 50], [330, 110, 5, 38]]) {
+    for (let i = 0; i < n; i++) puff(cx + (rnd() - 0.5) * size * 3.2, cy + (rnd() - 0.5) * size * 0.8, size * (0.6 + rnd() * 0.6));
   }
-  for (let i = 0; i < 320; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.85})`; const s = Math.random() < 0.08 ? 2 : 1; g.fillRect(Math.random() * 1024, Math.random() * 600, s, s); }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  const img = new Image();
-  img.onload = () => {
-    const pw = 470, ph = Math.round(pw * img.height / img.width), px = 1024 - pw + 30, py = 70;
-    const halo = g.createRadialGradient(px + pw * 0.62, py + ph * 0.5, 40, px + pw * 0.62, py + ph * 0.5, 300); halo.addColorStop(0, 'rgba(255,150,210,0.32)'); halo.addColorStop(1, 'rgba(255,150,210,0)');
-    g.fillStyle = halo; g.fillRect(px - 120, py - 160, pw + 240, ph + 320);
-    const p = document.createElement('canvas'); p.width = pw; p.height = ph; const q = p.getContext('2d');
-    q.drawImage(img, 0, 0, pw, ph); q.globalCompositeOperation = 'destination-in';
-    const fx = q.createLinearGradient(0, 0, pw, 0); fx.addColorStop(0, '#000'); fx.addColorStop(0.82, '#000'); fx.addColorStop(1, 'rgba(0,0,0,0)'); q.fillStyle = fx; q.fillRect(0, 0, pw, ph);
-    const fy = q.createLinearGradient(0, 0, 0, ph); fy.addColorStop(0, '#000'); fy.addColorStop(0.78, '#000'); fy.addColorStop(1, 'rgba(0,0,0,0)'); q.fillStyle = fy; q.fillRect(0, 0, pw, ph);
-    g.globalAlpha = 0.95; g.drawImage(p, px, py); g.globalAlpha = 1; t.needsUpdate = true;
-  };
-  img.src = here('./art/planet.webp');
   return t;
 }
 function glowTexture() {
@@ -157,7 +150,7 @@ function glowTexture() {
 // ------------------------------------------------------------------ what stands where
 // block id -> landmark model and its height in tiles
 const LANDMARKS = { home: ['lantern-house', 2.6], canal: ['canal-watch', 3.8], commons: ['union-crossing', 2.3], depot: ['midnight-depot', 2.5], gate: ['signal-gate', 2.3], workshop: ['copper-workshop', 2.5], garden: ['rooftop-garden', 2.7] };
-const KIND_COLOR = { home: '#ffb27a', scout: '#4fd8ff', negotiate: '#6ff0a6', heist: '#ff6a3d', defend: '#a98bff', territory: '#ffc94d' };
+const KIND_COLOR = { home: '#e0622c', scout: '#1f8a8a', negotiate: '#3b8f4a', heist: '#c23b3b', defend: '#7a5ea8', territory: '#c8901f' };
 // [model, gx, gy, turn (rad), width (tiles), height (tiles), blocks the cell?]
 const PROPS = [
   ['prop-locomotive', 1.6, 10, 0, 2.1, 1.1], ['prop-gantry', 8, 10, 0, 1.5, 1.4], ['prop-signal', 5.3, 9.62, 0, 0.3, 1.25],
@@ -172,7 +165,8 @@ const BENCHES = [[2.4, 6.6, 0], [8.2, 3.4, Math.PI], [5.3, 6.1, Math.PI / 2]];
 
 // ------------------------------------------------------------------ renderer
 let renderer;
-try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }); }
+// No canvas MSAA: frames go through the EffectComposer's own render targets.
+try { renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' }); }
 catch { document.body.dataset.renderer = 'canvas'; }
 if (renderer) start();
 
@@ -182,24 +176,24 @@ function start() {
   canvas.setAttribute('aria-label', 'The Switchyard, a 3D district. Click the ground or use WASD to walk; click a building to enter it. The Jobs page lists every location.');
   wrap.prepend(canvas);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
 
   const scene = new THREE.Scene();
   scene.background = skyTexture();
-  scene.fog = new THREE.Fog('#2b1652', 150, 330);
+  scene.fog = new THREE.Fog('#f6dcc0', 270, 520);
   const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 1, 800);
-  scene.add(new THREE.HemisphereLight('#a596ff', '#24143c', 1.15));
-  const key = new THREE.DirectionalLight('#ffb184', 2.6);
+  scene.add(new THREE.HemisphereLight('#fff3e2', '#a88866', 1.35));
+  const key = new THREE.DirectionalLight('#ffd9a8', 2.5);
   key.castShadow = true; key.shadow.mapSize.set(2048, 2048);
   Object.assign(key.shadow.camera, { left: -36, right: 36, top: 36, bottom: -36, near: 10, far: 260 });
   key.shadow.bias = -0.0004; key.shadow.normalBias = 0.03;
   scene.add(key, key.target);
-  const rim = new THREE.DirectionalLight('#4fd8ff', 0.9); rim.position.set(80, 45, -70); scene.add(rim);
+  const rim = new THREE.DirectionalLight('#ffe6c8', 0.5); rim.position.set(80, 45, -70); scene.add(rim);
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.4, 0.86);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.14, 0.3, 0.95);
   composer.addPass(bloom); composer.addPass(new OutputPass());
 
   const world = new THREE.Group(); scene.add(world);
@@ -252,7 +246,7 @@ function start() {
       if (tree) prop(tree).then((t) => { const m = fit(dress(t.scene.clone(true), { glow: 0.6, lite: true }), T * 0.8, T * 1.3); m.position.set(x, y - 1.15 * sc + 0.02, z); decor.add(m); }).catch(() => {});
     }
     // The canal spills over the northern edge.
-    const fall = new THREE.Mesh(new THREE.PlaneGeometry(T * 0.5, 30), new THREE.MeshBasicMaterial({ map: fallTexture(), transparent: true, opacity: 0.75, depthWrite: false, blending: THREE.AdditiveBlending, color: '#7fe9ff' }));
+    const fall = new THREE.Mesh(new THREE.PlaneGeometry(T * 0.5, 30), new THREE.MeshBasicMaterial({ map: fallTexture(), transparent: true, opacity: 0.7, depthWrite: false, color: '#d8f6f3' }));
     fall.position.copy(toWorld(4, MIN - 0.5, -16)); fall.userData.fall = true; world.add(fall);
     shadowsDirty = true;
   }
@@ -270,7 +264,7 @@ function start() {
     };
     for (const [name, gx, gy, turn, w, h, blocks] of PROPS) { if (blocks) BLOCKED.add(Math.round(gx) + ',' + Math.round(gy)); place(name, gx, gy, turn, w, h, name.startsWith('prop-loco') || name.startsWith('prop-gantry') ? world : decor); }
     for (const [name, gx, gy, blocks] of TREES) { if (blocks) BLOCKED.add(gx + ',' + gy); place(name, gx, gy, gx * 1.7, name === 'kw-bush' || name === 'kw-flowers' ? 0.7 : 0.95, name === 'kw-bush' || name === 'kw-flowers' ? 0.45 : 1.45, decor, 0.6); }
-    const pool = new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffb37a', transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending });
+    const pool = new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffd29a', transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending });
     for (const [gx, gy] of LAMPS) { place('kw-lamp', gx, gy, 0, 0.3, 1.05, world, 1.4); const s = new THREE.Sprite(pool); s.position.copy(toWorld(gx, gy, 3.6)); s.scale.setScalar(3); world.add(s); }
     for (const [gx, gy, turn] of BENCHES) place('kw-bench', gx, gy, turn, 0.55, 0.3, decor, 0.6);
     shadowsDirty = true;
@@ -279,7 +273,7 @@ function start() {
   // ---------------------------------------------------------------- landmarks
   const buildings = [], blockGroups = new Map(), pins = [];
   function placeholder(b) { // until (or unless) the model loads
-    const m = new THREE.Mesh(new THREE.BoxGeometry(T * 0.9, T * 1.2, T * 0.9), new THREE.MeshStandardMaterial({ color: '#3a2a64', emissive: KIND_COLOR[b.kind], emissiveIntensity: 0.12, roughness: 0.8 }));
+    const m = new THREE.Mesh(new THREE.BoxGeometry(T * 0.9, T * 1.2, T * 0.9), new THREE.MeshStandardMaterial({ color: '#e8d6bf', emissive: KIND_COLOR[b.kind], emissiveIntensity: 0.08, roughness: 0.8 }));
     m.position.y = T * 0.6; m.castShadow = true; return m;
   }
   function build(b) {
@@ -307,7 +301,7 @@ function start() {
   world.add(player.group);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.06, 8, 48), new THREE.MeshBasicMaterial({ color: '#ff6a3d', transparent: true }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; player.group.add(ring);
-  const fallbackBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.1, 4, 10), new THREE.MeshStandardMaterial({ color: '#2a1e46', emissive: '#ff6a3d', emissiveIntensity: 0.25, roughness: 0.5 }));
+  const fallbackBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.1, 4, 10), new THREE.MeshStandardMaterial({ color: '#f1e6d6', emissive: '#e0622c', emissiveIntensity: 0.15, roughness: 0.5 }));
   fallbackBody.position.y = 1; fallbackBody.castShadow = true; player.group.add(fallbackBody);
   const tag = document.createElement('div'); tag.className = 'agent-tag'; labels.append(tag);
   function setTag() {
@@ -342,15 +336,15 @@ function start() {
   }
 
   // ---------------------------------------------------------------- markers
-  const beamMat = new THREE.MeshBasicMaterial({ color: '#ff6a3d', transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const beamMat = new THREE.MeshBasicMaterial({ color: '#e0622c', transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(T * 0.55, T * 0.75, 70, 32, 1, true), beamMat); beam.visible = false; world.add(beam);
   const clickRing = new THREE.Mesh(new THREE.RingGeometry(0.7, 0.95, 40), new THREE.MeshBasicMaterial({ color: '#ffd2a8', transparent: true, opacity: 0, depthWrite: false }));
   clickRing.rotation.x = -Math.PI / 2; world.add(clickRing); let markAt = -9;
   const signalMat = (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9 });
-  const scoutSignal = new THREE.Mesh(new THREE.TorusGeometry(T * 0.95, 0.08, 8, 64), signalMat('#4fd8ff')), depotSignal = new THREE.Mesh(new THREE.TorusGeometry(T * 0.95, 0.08, 8, 64), signalMat('#ff6a3d'));
+  const scoutSignal = new THREE.Mesh(new THREE.TorusGeometry(T * 0.95, 0.08, 8, 64), signalMat('#1f8a8a')), depotSignal = new THREE.Mesh(new THREE.TorusGeometry(T * 0.95, 0.08, 8, 64), signalMat('#ff6a3d'));
   for (const [m, gx, gy] of [[scoutSignal, 2, 2], [depotSignal, 7, 6]]) { m.rotation.x = -Math.PI / 2; m.position.copy(toWorld(gx, gy, 0.2)); m.visible = false; world.add(m); }
   const patrol = new THREE.Group(); world.add(patrol); patrol.visible = false;
-  { const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 0.9), new THREE.MeshStandardMaterial({ color: '#2a2050', emissive: '#4fd8ff', emissiveIntensity: 0.8 })); patrol.add(body);
+  { const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 0.9), new THREE.MeshStandardMaterial({ color: '#f3ebe0', emissive: '#1f8a8a', emissiveIntensity: 0.35 })); patrol.add(body);
     for (const s of [-1, 1]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 6, 24), signalMat('#ffc94d')); r.rotation.x = -Math.PI / 2; r.position.set(s * 0.95, 0.15, 0); patrol.add(r); }
     const eye = new THREE.PointLight('#4fd8ff', 30, 14, 1.6); eye.position.y = -0.6; patrol.add(eye); }
 
@@ -430,7 +424,7 @@ function start() {
   if (new URLSearchParams(location.search).has('debug')) window.switchyardDebug = { top(on = true) { topDown = on; }, zoom(z) { zoomTo = z; } };
   function resize() {
     const w = innerWidth, h = innerHeight; size = { w, h };
-    const dpr = quality === 'low' ? Math.min(devicePixelRatio, 1) : Math.min(devicePixelRatio, 1.5);
+    const dpr = quality === 'low' ? Math.min(devicePixelRatio, 1) : Math.min(devicePixelRatio, 1.25);
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); composer.setPixelRatio(dpr); composer.setSize(w, h);
     canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; labelsDirty = true;
   }
@@ -512,7 +506,7 @@ function start() {
     const next = st.blocks.find((b) => b.id === nextId);
     $('#map-objective').textContent = st.mission ? 'MISSION IN PROGRESS' : done && workshop ? 'WORKSHOP HELD' : next?.name?.toUpperCase() || 'CANAL WATCH';
     const alert = st.agent.alert || 0; document.body.dataset.alert = String(alert);
-    rim.color.set(alert >= 2 ? '#ff765e' : '#4fd8ff'); rim.intensity = alert >= 2 ? 2.2 : 0.9;
+    rim.color.set(alert >= 2 ? '#ff8a6a' : '#ffe6c8'); rim.intensity = alert >= 2 ? 1.6 : 0.5;
     $('#map-story').textContent = alert >= 2 ? `Watch active · alert ${alert}/4 · defend to lower pressure` : st.mission ? 'Follow through on the current decision.' : !lead ? 'Scout → Heist → Crew' : !done ? 'Verified intel. The depot is ready.' : !workshop ? 'Manifest secured. Build your crew.' : 'Your decisions changed this district.';
     if (next) { beam.position.copy(toWorld(next.x, next.y, 35)); beam.visible = !st.mission || st.mission.kind === next.kind; }
     for (const p of pins) {
