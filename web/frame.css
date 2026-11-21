@@ -58,3 +58,92 @@
   .location small { display: none; }
   .hud-right .pill small { display: none; }
 }
+
+/* ---------------------------------------------------------------- phones and upright tablets: a stack
+   Top bar, the 3D Switchyard, the goal in three steps, the Agent console, the
+   nav bar. Each has its own band, so nothing covers anything else. */
+@media (max-width: 760px), (max-width: 1179px) and (orientation: portrait) {
+  :root { --s-top: 64px; --s-world: 44vh; --s-goal: 46px; --s-bar: 78px; }
+  .hud-top { top: 0 !important; left: 0 !important; right: 0 !important; height: var(--s-top); padding: 0 10px; align-items: center; background: rgba(255, 250, 242, 0.97); border-bottom: 1px solid var(--stroke); pointer-events: auto; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; }
+  .hud-top .glass { box-shadow: none; }
+  .hud-player { background: none; border: 0; padding: 4px 8px 4px 2px; }
+  .hp-main .eyebrow, .hp-memory, .hud-player .kw-agent-tags { display: none; }
+  .hud-right, .hud-right .resources { flex-wrap: nowrap; }
+
+  .world, #map-wrap { top: var(--s-top); left: 0; right: 0; bottom: auto; height: var(--s-world); }
+  .vignette { top: var(--s-top); bottom: auto; height: var(--s-world); }
+  .tags-layer { position: absolute; }
+  body.console-open .tags-layer, body.console-open .world-tip { visibility: visible !important; }
+
+  .quest-tracker, body.console-open .quest-tracker { display: flex !important; align-items: center; top: calc(var(--s-top) + var(--s-world)) !important; bottom: auto !important; left: 0 !important; right: 0 !important; width: auto !important; height: var(--s-goal); max-height: none; padding: 0 12px !important; border-radius: 0 !important; border-width: 1px 0; box-shadow: none; overflow: hidden; z-index: 11; }
+  .quest-tracker > *:not(.journey) { display: none !important; }
+  .quest-tracker .journey { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin: 0; }
+  .quest-tracker .journey li { grid-template-columns: 14px minmax(0, 1fr); gap: 6px; align-items: center; font-size: 12px; }
+  .quest-tracker .journey li small { display: none; }
+  .quest-tracker .journey li b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.15; }
+
+  #agent-console, #agent-console[hidden] { display: flex !important; top: calc(var(--s-top) + var(--s-world) + var(--s-goal)) !important; left: 0 !important; right: 0 !important; bottom: var(--s-bar) !important; width: auto !important; max-height: none !important; border-radius: 0 !important; border-width: 0; box-shadow: none; z-index: 12; animation: none; }
+  #agent-console .console-bar, #agent-console .aside-foot { display: none; }
+  #agent-console .mission-panel { flex: 1 1 auto; padding: 14px 16px; }
+  #open-agent-console, .dock [data-act="console"] { display: none !important; }
+
+  .dock { left: 0 !important; right: 0 !important; bottom: 0 !important; height: var(--s-bar); transform: none !important; justify-content: space-around; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)) !important; border-radius: 0 !important; border-width: 1px 0 0; background: rgba(255, 250, 242, 0.98); }
+
+  .minimap { display: none !important; }
+  body.mm-open .minimap { display: block !important; top: calc(var(--s-top) + 8px) !important; left: 8px !important; right: auto !important; bottom: auto !important; padding: 6px !important; }
+  body.mm-open .minimap canvas { width: 120px; height: 120px; }
+  .phone-only { display: grid !important; }
+  .map-tools, body.mm-open .map-tools { top: calc(var(--s-top) + 8px) !important; right: 8px !important; bottom: auto !important; }
+  #hint { display: none !important; }
+  #notice { top: calc(var(--s-top) + 8px) !important; bottom: auto !important; left: 8px !important; right: 56px !important; max-width: none !important; }
+  .return-brief { top: calc(var(--s-top) + 8px) !important; left: 8px !important; right: 56px !important; width: auto !important; transform: none !important; }
+  .pages { top: var(--s-top); bottom: var(--s-bar); padding: 0; z-index: 15; }
+  .page-win { padding-bottom: 0; }
+}
+/* phones: the top bar takes two rows (Agent, then resources) */
+@media (max-width: 760px) {
+  :root { --s-top: 104px; --s-world: 36vh; --s-goal: 42px; --s-bar: 64px; }
+  .hud-top { grid-template-columns: 1fr; align-content: center; gap: 6px; padding: 6px 8px; }
+  .hud-player { padding: 0; }
+  .hud-right { justify-self: stretch; }
+  .quest-tracker .journey li { font-size: 11px; gap: 4px; }
+  .dk-ico { width: 38px !important; height: 38px !important; }
+}
+
+/* ---------------------------------------------------------------- landscape tablets: 3D left, goal and console right */
+@media (min-width: 761px) and (max-width: 1179px) and (orientation: landscape) {
+  :root { --t-top: 64px; --t-bar: 74px; --t-right: 340px; --t-g: 10px; --t-goal: 50px; }
+  .hud-top { top: 0; left: 0; right: 0; height: var(--t-top); padding: 0 var(--t-g); align-items: center; background: rgba(255, 250, 242, 0.97); border-bottom: 1px solid var(--stroke); pointer-events: auto; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; }
+  .hud-top .glass { box-shadow: none; }
+  .hud-player { background: none; border: 0; padding: 4px 8px 4px 2px; }
+  .hp-main .eyebrow, .hp-memory, .hud-player .kw-agent-tags, .hud-right .badge { display: none; }
+  .hud-right, .hud-right .resources { flex-wrap: nowrap; gap: 5px; }
+
+  .world, #map-wrap { top: calc(var(--t-top) + var(--t-g)); left: var(--t-g); right: calc(var(--t-right) + var(--t-g) * 2); bottom: calc(var(--t-bar) + var(--t-g)); border-radius: 16px; overflow: hidden; }
+  .vignette { top: calc(var(--t-top) + var(--t-g)); left: var(--t-g); right: calc(var(--t-right) + var(--t-g) * 2); bottom: calc(var(--t-bar) + var(--t-g)); border-radius: 16px; }
+  .tags-layer { position: absolute; }
+
+  .quest-tracker, body.console-open .quest-tracker { display: flex !important; align-items: center; top: calc(var(--t-top) + var(--t-g)); right: var(--t-g); left: auto; bottom: auto; width: var(--t-right); height: var(--t-goal); max-height: none; padding: 0 12px; overflow: hidden; }
+  .quest-tracker > *:not(.journey) { display: none !important; }
+  .quest-tracker .journey { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; margin: 0; }
+  .quest-tracker .journey li { grid-template-columns: 14px minmax(0, 1fr); gap: 5px; align-items: center; font-size: 11.5px; }
+  .quest-tracker .journey li small { display: none; }
+  .quest-tracker .journey li b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.15; }
+
+  #agent-console, #agent-console[hidden] { display: flex !important; top: calc(var(--t-top) + var(--t-goal) + var(--t-g) * 2); right: var(--t-g); bottom: calc(var(--t-bar) + var(--t-g)); width: var(--t-right); max-height: none; z-index: 12; animation: none; }
+  #agent-console .mission-panel { flex: 1 1 auto; }
+  #close-agent-console, #open-agent-console, .dock [data-act="console"] { display: none !important; }
+
+  .dock { left: 0; right: 0; bottom: 0; height: var(--t-bar); transform: none; justify-content: center; padding: 6px 10px; border-radius: 0; border-width: 1px 0 0; background: rgba(255, 250, 242, 0.97); }
+  .dock .dl { display: block; }
+
+  .minimap { display: none; }
+  body.mm-open .minimap { display: block; top: calc(var(--t-top) + var(--t-g) * 2); left: calc(var(--t-g) * 2); right: auto; bottom: auto; padding: 6px; z-index: 11; }
+  body.mm-open .minimap canvas { width: 140px; height: 140px; }
+  .phone-only { display: grid !important; }
+  .map-tools, body.console-open .map-tools { top: calc(var(--t-top) + var(--t-g) * 2); bottom: auto; right: calc(var(--t-right) + var(--t-g) * 3); z-index: 11; }
+  #hint { display: none; }
+  #notice { top: auto; left: calc(var(--t-g) * 2); bottom: calc(var(--t-bar) + var(--t-g) * 2); max-width: min(380px, calc(100vw - var(--t-right) - 80px)); }
+  .return-brief { top: calc(var(--t-top) + var(--t-g) * 2); left: calc(var(--t-g) * 2); width: calc(100vw - var(--t-right) - 110px); min-width: 0; transform: none; animation: none; }
+  .pages { top: var(--t-top); bottom: var(--t-bar); padding: 14px; }
+}

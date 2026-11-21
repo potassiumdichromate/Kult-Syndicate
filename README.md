@@ -19,7 +19,7 @@ A playable Switchyard district for KULT World: Scout the canal, use verified int
 - **Mission console as cards** (`web/app.js`, `web/console-cards.css`). The console shows one thing at a time: the next step of the goal, a brief with its cost, one decision, the countdown, or the result with one next action (for example Plan the Heist after a good Scout). A decision card shows the situation, the Agent's field note and big choice cards with their cost; a choice the Permissions or balances rule out says why.
 - **Three welcome cards** (`web/welcome.js`) open on the first visit and from Guide: who decides what, the first goal, and the four resources. The last card opens the Scout brief, or the full guided tour (`web/tour.js`).
 - Card art is rendered from the district's Meshy models (`web/art/cards/`).
-- **Desktop frame** (`web/frame.css`, 1180px and wider): a top bar, the goal and minimap on the left, the 3D Switchyard in the centre, the Agent console always open on the right, and the nav bar along the bottom, so no panel covers another. `world.js` sizes the 3D view to its centre area. Phones and tablets keep the floating layout.
+- **Desktop frame** (`web/frame.css`, 1180px and wider): a top bar, the goal and minimap on the left, the 3D Switchyard in the centre, the Agent console always open on the right, and the nav bar along the bottom, so no panel covers another. `world.js` sizes the 3D view to its centre area. Phones and upright tablets stack the same parts (top bar, 3D, the goal's three steps, the console, the nav bar); landscape tablets put the 3D world on the left and the goal and console on the right. The minimap opens from the map button on smaller screens.
 
 ## The Switchyard in KULT World's style
 
