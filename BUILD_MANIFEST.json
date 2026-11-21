@@ -6,7 +6,7 @@
     ".gitignore": "4b1e3e3e474e6f1b42ef650a6b61ffa32f2f8e8bcc5785e2be56e23afef99a46",
     "DEPLOY.md": "ac83f12ad52280641d64a7de5b0dd3976586ede93e436ae6fe9fba45061586ec",
     "Dockerfile": "493319e3deb6de53e384ccfbd2327d58463f7093da5012f246d8034226b1fb6e",
-    "README.md": "50563c7dab91014032efd911e99e01a989c5b8f445e5eae2c4814516793839e1",
+    "README.md": "39c73cd6f98d9356be83aff8d61e02e119e5399e0969a8475b5074c5eee01bcc",
     "START_LOCAL.py": "17439b2b4db7937e316d7733755560bb3dd1e37c8ff03a5ac649d820a4f01648",
     "VERIFY_BUILD.py": "a73443882b8874336785074cbe8ad47c9390eacb0ddb9dc0b604ba92e045bdd2",
     "compose.sandbox.yaml": "9d8f12cf0030b4fd0b676a6ef273ff09d38bafe96cfef8434bde0ae888b28599",
@@ -115,6 +115,7 @@
     "web/fonts/ChakraPetch-600.woff2": "a5888696e9eb1b4bbbecc8eb3922b8369f49d4bddb72263e033cbd17f399be76",
     "web/fonts/ChakraPetch-700.woff2": "ce5095dc1cb200aaa939e38067a0677018d10e9f26ec38cdcf1557ac524fc775",
     "web/fonts/Inter-var.woff2": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
+    "web/frame.css": "5c0ba39cc37f43d6c92d1c8c582faec1daa788e03951d2408a2d3c2b4e007dff",
     "web/godot-bridge.js": "ffa4531d3eb54e84cd2e6b42034fa83423becfc6426c9229108fbccfa6c8b13c",
     "web/godot/bootstrap-1.js": "17a98cd41e9bd0d71b1f2c155af4804d0eb33fa0264b7c25e01855d251bf55ff",
     "web/godot/index.audio.position.worklet.js": "be33985bc7160d6bf9646f259cd86b259cd67b02ccb297ee5c44f8ac84327bc8",
@@ -126,7 +127,7 @@
     "web/godot/index.wasm": "6498359ba889796a0d95a2f71113ac184badc0f2d84cf28f4103c7e399d2d547",
     "web/home.html": "86a3873aed25a5c313eb839c818e7d792705533077333e71f2923d4f4dd51b0b",
     "web/i18n.js": "015716ce4438cc90b7a6b1af9ee6f1daed270f6d1bf25d81590d99c63197cf03",
-    "web/index.html": "049cd869a4776213d36771af9971740bd911e641e561bf6796477aad5c93b34e",
+    "web/index.html": "5100b20f3b6db2c4bc512a812d903d6074e67badf57471ddf9029333a68d293c",
     "web/kult-agent.js": "7addfe15144eb7fa21657861d7dd351d0a56dc3508dfdbe14b72730ee8dad53e",
     "web/models/canal-watch.glb": "72801f7429987cecbc96e79d408ae28c05617eeec32d8c024311222dc70ed740",
     "web/models/copper-workshop.glb": "3020bb08df57fe05dbac20a4d7adf4e38c968cedf68554804804ba14a0ac54e6",
@@ -182,6 +183,6 @@
     "web/vendor/three.module.js": "ce1fa418de16a19495a9f72495580e3015d7745c296d3ce0485897f902ddedfb",
     "web/welcome.js": "42fe03adb98ca994a6f43e336ef7f30bb87a3142a463089d581383485a521484",
     "web/world.css": "5145c03f65d64dbf65aad75b60934f5a9cf7490695d68eebf2712db4c38a7fc6",
-    "web/world.js": "55b354e31650fe80b89868a26de749ed08c0fbc3baf8bc169d9dc3ea02babd0b"
+    "web/world.js": "1f2a579627db50e2b0962ce55343936702f8007f7d7f348c17b127b93bcc03ab"
   }
 }

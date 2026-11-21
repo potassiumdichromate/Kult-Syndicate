@@ -423,7 +423,8 @@ function start() {
   let cinematic = true, topDown = false;
   if (new URLSearchParams(location.search).has('debug')) window.switchyardDebug = { top(on = true) { topDown = on; }, zoom(z) { zoomTo = z; } };
   function resize() {
-    const w = innerWidth, h = innerHeight; size = { w, h };
+    // The view fills #map-wrap: the whole screen, or the centre of the framed desktop layout.
+    const r = wrap.getBoundingClientRect(), w = Math.max(1, Math.round(r.width || innerWidth)), h = Math.max(1, Math.round(r.height || innerHeight)); size = { w, h, x: r.left, y: r.top };
     const dpr = quality === 'low' ? Math.min(devicePixelRatio, 1) : Math.min(devicePixelRatio, 1.25);
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false); composer.setPixelRatio(dpr); composer.setSize(w, h);
     canvas.style.width = w + 'px'; canvas.style.height = h + 'px'; labelsDirty = true;
@@ -493,6 +494,7 @@ function start() {
   addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if (keys.delete(k)) updateKeys(); });
   addEventListener('blur', () => { keys.clear(); keyMove = null; });
   addEventListener('resize', resize);
+  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(wrap);
 
   // ---------------------------------------------------------------- state
   let built = false, nextId = 'canal', hoverId = null, labelsDirty = true, shadowsDirty = true;
@@ -582,7 +584,7 @@ function start() {
     const d = nearDoor();
     if (d !== lastDoor) { lastDoor = d; if (tip) { tip.hidden = !d; if (d) { tip.style.setProperty('--c', KIND_COLOR[d.kind]); tip.innerHTML = ''; const k = document.createElement('kbd'); k.textContent = 'E'; const b = document.createElement('b'); b.textContent = d.name; const s = document.createElement('small'); s.textContent = d.kind === 'home' ? 'Your safehouse' : d.kind === 'territory' ? 'Crew territory' : 'Open the job'; tip.append(k, b, s); } } }
     tag.style.visibility = d ? 'hidden' : 'visible';
-    if (d && tip) { proj.copy(player.group.position).setY(player.gy + T * 0.66).project(camera); tip.style.left = Math.min(size.w - 90, Math.max(90, ((proj.x + 1) / 2) * size.w)) + 'px'; tip.style.top = Math.max(150, ((1 - proj.y) / 2) * size.h) + 'px'; }
+    if (d && tip) { proj.copy(player.group.position).setY(player.gy + T * 0.66).project(camera); tip.style.left = (size.x || 0) + Math.min(size.w - 90, Math.max(90, ((proj.x + 1) / 2) * size.w)) + 'px'; tip.style.top = (size.y || 0) + Math.max(150, ((1 - proj.y) / 2) * size.h) + 'px'; }
   }
   function loop(now) {
     requestAnimationFrame(loop);

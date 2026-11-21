@@ -1,0 +1,60 @@
+/* Desktop frame: nothing floats over anything else.
+   Top bar: your Agent, the district and your resources.
+   Left: the goal tracker, with the minimap under it.
+   Centre: the 3D Switchyard (world.js sizes itself to #map-wrap).
+   Right: the Agent console, always open.
+   Bottom: the nav bar.
+   Phones and tablets keep the floating layout from switchyard.css. */
+@media (min-width: 1180px) {
+  :root { --f-top: 64px; --f-bar: 78px; --f-left: 300px; --f-right: 380px; --f-g: 12px; }
+  body { background: linear-gradient(180deg, #f8eddc, #f2e2cb); }
+
+  /* centre */
+  .world, #map-wrap { top: var(--f-top); left: calc(var(--f-left) + var(--f-g) * 2); right: calc(var(--f-right) + var(--f-g) * 2); bottom: var(--f-bar); border-radius: 18px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(70, 45, 20, 0.1); margin-top: var(--f-g); margin-bottom: var(--f-g); }
+  #map-wrap { position: fixed; }
+  .vignette { top: calc(var(--f-top) + var(--f-g)); left: calc(var(--f-left) + var(--f-g) * 2); right: calc(var(--f-right) + var(--f-g) * 2); bottom: calc(var(--f-bar) + var(--f-g)); border-radius: 18px; }
+  .tags-layer { position: absolute; }
+
+  /* top bar */
+  .hud-top { top: 0; left: 0; right: 0; height: var(--f-top); padding: 0 var(--f-g); align-items: center; background: rgba(255, 250, 242, 0.97); border-bottom: 1px solid var(--stroke); pointer-events: auto; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; }
+  .hud-top .glass { box-shadow: none; }
+  .hud-player { padding: 4px 12px 4px 4px; max-width: 420px; background: none; border: 0; }
+  .hud-player .portrait, .hud-player .kw-agent-portrait { width: 44px; height: 44px; border-radius: 12px; }
+  .hp-main .eyebrow, .hp-memory { display: none; }
+  .hud-player .kw-agent-tags { display: none; }
+  .location { padding: 8px 18px; }
+  .hud-right, .hud-right .resources { flex-wrap: nowrap; }
+  .hud-right { gap: 6px; }
+
+  /* left: goal and minimap */
+  .quest-tracker, body.console-open .quest-tracker { display: grid; top: calc(var(--f-top) + var(--f-g)); left: var(--f-g); right: auto; width: var(--f-left); bottom: auto; max-height: calc(100vh - var(--f-top) - var(--f-bar) - var(--f-g) * 3 - 256px); overflow: auto; align-content: start; }
+  /* the console on the right holds the action; the left panel is just the goal */
+  .quest-tracker .qt-actions, .quest-tracker .qt-next, .quest-tracker .qt-story { display: none !important; }
+  .minimap, body.console-open .minimap { left: var(--f-g); right: auto; bottom: calc(var(--f-bar) + var(--f-g)); width: var(--f-left); height: 256px; z-index: 10; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; }
+  .minimap .mm-head { justify-self: stretch; }
+  .minimap canvas { width: 180px; height: 180px; }
+
+  /* right: the console, always open */
+  #agent-console, #agent-console[hidden] { display: flex !important; top: calc(var(--f-top) + var(--f-g)); right: var(--f-g); bottom: calc(var(--f-bar) + var(--f-g)); width: var(--f-right); max-height: none; z-index: 12; animation: none; }
+  #agent-console .mission-panel { flex: 1 1 auto; }
+  #close-agent-console, #open-agent-console, .dock [data-act="console"] { display: none !important; }
+
+  /* in the centre: map tools, hint, notices, return brief, the walking tip */
+  .map-tools, body.console-open .map-tools { top: calc(var(--f-top) + var(--f-g) * 2); bottom: auto; right: calc(var(--f-right) + var(--f-g) * 3); z-index: 10; }
+  #hint { bottom: calc(var(--f-bar) + var(--f-g) * 2); left: calc((var(--f-left) + 100vw - var(--f-right)) / 2); max-width: calc(100vw - var(--f-left) - var(--f-right) - 96px); }
+  body.console-open #hint { opacity: 1; }
+  body:not(.world-view) #hint { opacity: 0; }
+  #notice { left: calc(var(--f-left) + var(--f-g) * 3); bottom: calc(var(--f-bar) + var(--f-g) * 5); max-width: min(380px, calc(100vw - var(--f-left) - var(--f-right) - 72px)); }
+  .return-brief { top: calc(var(--f-top) + var(--f-g) * 2); left: calc((var(--f-left) + 100vw - var(--f-right)) / 2); transform: translateX(-50%); width: min(560px, calc(100vw - var(--f-left) - var(--f-right) - 120px)); min-width: 0; animation: none; }
+
+  /* bottom nav bar */
+  .dock { left: 0; right: 0; bottom: 0; height: var(--f-bar); transform: none; justify-content: center; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 0; border-width: 1px 0 0; background: rgba(255, 250, 242, 0.97); box-shadow: 0 -6px 18px -12px rgba(90, 55, 20, 0.35); }
+
+  /* pages open between the top bar and the nav bar */
+  .pages { top: var(--f-top); bottom: var(--f-bar); padding: 18px; }
+}
+@media (min-width: 1180px) and (max-width: 1365px) {
+  :root { --f-left: 264px; --f-right: 344px; }
+  .location small { display: none; }
+  .hud-right .pill small { display: none; }
+}
