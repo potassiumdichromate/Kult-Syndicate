@@ -1,8 +1,7 @@
 'use strict';
-// First visit: three cards instead of a long tour. Who decides what, the first
-// goal, and what the resources are. The last card opens the Scout brief in one
-// click. "How to play" (the ? button) reopens it; the printable handbook covers
-// the rest.
+// First visit: three short cards before anything else. Who decides what, the
+// first goal, and what the resources are. The last card opens the Scout brief in
+// one click, or the full guided tour (tour.js). Guide (G) reopens them.
 (() => {
   const $ = (s) => document.querySelector(s);
   const KEY = 'syndicates-welcome-v2', OLD = 'syndicates-tour-v1';
@@ -11,12 +10,12 @@
   const api = () => window.KultDistrictAPI;
   const SLIDES = [
     () => `<div class="w-art"><img src="${A('agent')}" alt=""></div><div class="w-body"><p class="eyebrow">WELCOME TO THE SWITCHYARD</p><h2 id="welcome-title">You run an AI Agent.</h2><p>Syndicates is a strategy game inside KULT World. Send your Agent on missions, read what it finds, and make the call.</p>
-      <ul class="w-list"><li><i style="--c:var(--teal)"></i><span><b>Your Agent brings the clues.</b> Each decision shows what it sees, plus a field note.</span></li><li><i style="--c:var(--rust)"></i><span><b>You make the decisions.</b> Go, hold back, or spend Intel to be surer. Advice never decides for you.</span></li><li><i style="--c:var(--violet)"></i><span><b>The Passport remembers.</b> Wins, misses and walk-aways stay on your record.</span></li></ul></div>`,
+      <ul class="w-list"><li><i style="--c:#1f8a8a"></i><span><b>Your Agent brings the clues.</b> Each decision shows what it sees, plus a field note.</span></li><li><i style="--c:#e0622c"></i><span><b>You make the decisions.</b> Go, hold back, or spend Intel to be surer. Advice never decides for you.</span></li><li><i style="--c:#7a5ea8"></i><span><b>The Passport remembers.</b> Wins, misses and walk-aways stay on your record.</span></li></ul></div>`,
     () => `<div class="w-art trio"><img src="${A('canal-watch')}" alt=""><span class="arrow">→</span><img src="${A('midnight-depot')}" alt=""></div><div class="w-body"><p class="eyebrow">YOUR FIRST GOAL</p><h2>Recover the manifest.</h2><p>A patrol guards one entrance to Midnight Depot. First Scout Canal Watch to learn which one. Then use that report to pull off the Heist.</p>
-      <ul class="w-list"><li><i style="--c:var(--teal)"></i><span><b>Scout:</b> three quick calls, then a short countdown.</span></li><li><i style="--c:var(--red)"></i><span><b>Heist:</b> the report tells you the safer way in.</span></li><li><i style="--c:var(--gold)"></i><span><b>Later:</b> form a crew of up to five and claim territory.</span></li></ul></div>`,
+      <ul class="w-list"><li><i style="--c:#1f8a8a"></i><span><b>Scout:</b> three quick calls, then a short countdown.</span></li><li><i style="--c:#c23b3b"></i><span><b>Heist:</b> the report tells you the safer way in.</span></li><li><i style="--c:#a8730f"></i><span><b>Later:</b> form a crew of up to five and claim territory.</span></li></ul></div>`,
     () => `<div class="w-art"><img src="${A('lantern-house')}" alt=""></div><div class="w-body"><p class="eyebrow">GAME RESOURCES ONLY</p><h2>No real money moves.</h2>
-      <ul class="w-list"><li><i style="--c:var(--rust)"></i><span><b>Supplies</b> pay for missions and some choices.</span></li><li><i style="--c:var(--teal)"></i><span><b>Intel</b> buys certainty: spend it to check a clue.</span></li><li><i style="--c:var(--violet)"></i><span><b>Influence</b> is what your crew pools to claim territory.</span></li><li><i style="--c:var(--gold)"></i><span><b>Alert</b> rises when you draw attention. High Alert makes jobs harder.</span></li></ul>
-      ${api()?.getState()?.agent?.mode === 'demo' ? '<p class="fine">SANDBOX is a separate practice identity. It does not add to your normal record.</p>' : ''}</div>`,
+      <ul class="w-list"><li><i style="--c:#e0622c"></i><span><b>Supplies</b> pay for missions and some choices.</span></li><li><i style="--c:#1f8a8a"></i><span><b>Intel</b> buys certainty: spend it to check a clue.</span></li><li><i style="--c:#7a5ea8"></i><span><b>Influence</b> is what your crew pools to claim territory.</span></li><li><i style="--c:#a8730f"></i><span><b>Alert</b> rises when you draw attention. High Alert makes jobs harder.</span></li></ul>
+      ${api()?.getState()?.agent?.mode === 'demo' ? '<p class="fine">SANDBOX is a separate practice identity. It does not add to your normal record.</p>' : ''}<button class="cc-link w-tour" type="button" id="w-tour">Take the full guided tour instead</button></div>`,
   ];
   let i = 0;
   function paint() {
@@ -26,6 +25,7 @@
     $('#w-skip').classList.toggle('hidden', i === SLIDES.length - 1);
     const last = i === SLIDES.length - 1, busy = !!api()?.getState()?.mission;
     $('#w-next').textContent = last ? (busy ? 'Back to my mission' : 'Open the Scout brief') : 'Next';
+    const tour = $('#w-tour'); if (tour) tour.onclick = () => { close(); window.KultTour?.start(0); };
   }
   function open() { i = 0; paint(); if (!d.open) d.showModal(); }
   function close() { try { localStorage.setItem(KEY, '1'); } catch { /* private mode */ } if (d.open) d.close(); }

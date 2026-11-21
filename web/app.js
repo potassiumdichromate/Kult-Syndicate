@@ -1,533 +1,217 @@
+if(new URLSearchParams(location.search).get('embed')==='1')document.body.classList.add('embedded-world');
 'use strict';
-// KULT Syndicates on cards.
-//
-// One card holds whatever matters right now: the next step of your goal, a
-// mission brief, a decision, the countdown or the result. The mission deck sits
-// below it. The server stays the authority on every rule, cost and outcome;
-// this file only shows its state and sends the player's choices.
-if (new URLSearchParams(location.search).get('embed') === '1') document.body.classList.add('embedded-world');
-const appRoot = new URL('.', document.currentScript.src);
-const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-let state = null, csrf = '', tab = 'district', busy = false, receipt = null, replayTimer = null, selectedJob = null;
-let resultToShow = null, showAllJobs = false, pendingTotal = { id: null, seconds: 1 };
-
-// What each mission is, in a player's words. Costs and rewards come from the server.
-const JOBS = {
-  scout: { verb: 'Scout', place: 'Canal Watch', art: 'canal-watch', block: 'canal' },
-  heist: { verb: 'Heist', place: 'Midnight Depot', art: 'midnight-depot', block: 'depot' },
-  negotiate: { verb: 'Negotiate', place: 'Union Crossing', art: 'union-crossing', block: 'commons' },
-  defend: { verb: 'Defend', place: 'Signal Gate', art: 'signal-gate', block: 'gate' },
-};
-const ORDER = ['scout', 'heist', 'negotiate', 'defend'];
-const art = (name) => new URL('art/cards/' + name + '.webp', appRoot).href;
-const img = (name, cls = '', alt = '') => `<img class="${cls}" src="${art(name)}" alt="${esc(alt)}" loading="lazy" decoding="async">`;
-const plural = (n, one, many) => (Number(n) === 1 ? one : many);
-const chip = (cls, n, word) => `<span class="chip ${cls}"><i></i><b>${n}</b> <span>${word}</span></span>`;
-const supplyChip = (n) => chip('sup', n, plural(n, 'Supply', 'Supplies'));
-const kindTag = (kind) => `<span class="kind-tag"><span>${JOBS[kind]?.verb || esc(kind)}</span> · <span>${JOBS[kind]?.place || ''}</span></span>`;
-
-// ---------------------------------------------------------------- server
-let noticeTimer = 0;
-function notice(t, error = false) {
-  const n = $('#notice');
-  n.textContent = t;
-  n.className = 'toast' + (error ? ' error' : '');
-  clearTimeout(noticeTimer);
-  if (t && !error) noticeTimer = setTimeout(() => { n.textContent = ''; }, 6000);
+const appRoot=new URL('.',document.currentScript.src);
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let state=null,csrf='',tab='district',busy=false,receipt=null,replayTimer=null,godot=false,selectedJob=null;
+const icons={scout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M12 1v6m0 10v6M1 12h6m10 0h6"/></svg>',negotiate:'◇',defend:'▣',heist:'↗'};
+function notice(t,error=false){$('#notice').textContent=t;$('#notice').className=error?'error':''}
+async function api(path,body){let r;try{r=await fetch(new URL(path.replace(/^\//,''),appRoot),{method:body===undefined?'GET':'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf,'X-Request-ID':crypto.randomUUID()},...(body===undefined?{}:{body:JSON.stringify(body)})})}catch{throw Error('Connection lost. Check your network, then retry.')}let j;try{j=await r.json()}catch{throw Error('The service returned an unreadable response. Please retry.')}if(!r.ok){if(r.status===401&&state){const demo=state.agent.mode==='demo';state=null;csrf='';$('#experience').classList.add('hidden');$('#login').classList.remove('hidden');$('#mode').textContent=demo?'SANDBOX':'KULT SIGN-IN';$('#enter').classList.toggle('hidden',!demo);$('#login-text').textContent=demo?'Your sandbox session expired. Re-enter to continue with a new session.':'Your session expired. Return from KULT World to bind this same Agent again.'}throw Error(j.error||'Request failed')}return j}
+async function act(path,body={}){if(busy)return;busy=true;document.body.classList.add('busy');$('#mission-panel').setAttribute('aria-busy','true');try{await api(path,body);notice('');await refresh()}catch(e){notice(e.message,true)}finally{busy=false;document.body.classList.remove('busy');$('#mission-panel').removeAttribute('aria-busy')}}
+function readSnapshot(id){try{return JSON.parse(localStorage.getItem('syndicates-last-seen:'+id)||'null')}catch{return null}}
+function saveSnapshot(){try{localStorage.setItem('syndicates-last-seen:'+state.agent.id,JSON.stringify({rivalDay:state.rivals.latest.day,receipt:state.receipts[0]?.id||null,activity:state.crew?.activity?.[0]?.at||null,territory:state.crew?.territory?.map(x=>x.block+':'+x.expires).sort()||[]}))}catch{}}
+function showReturn(previous){if(!previous)return;const next=state.crew?.activity?.find(x=>x.at>(previous.activity||0)&&x.agent!==state.agent.id);
+ const newReceipt=state.receipts[0]?.id&&state.receipts[0].id!==previous.receipt;
+ const territory=JSON.stringify(state.crew?.territory?.map(x=>x.block+':'+x.expires).sort()||[])!==JSON.stringify(previous.territory||[]);
+ const move=state.rivals.latest,rival=previous.rivalDay!=null&&move.day>previous.rivalDay&&move.block;if(!next&&!newReceipt&&!territory&&!rival)return;
+ const panel=$('#return-brief'),title=$('#return-title'),detail=$('#return-detail'),button=$('#return-action');let destination='passport';
+ if(next){destination='crew';title.textContent='Your crew made a move.';detail.textContent=`${next.name} ${next.event==='crew.deposit'?'contributed '+next.detail.amount+' Supplies':next.event==='territory.claimed'?'leased the '+next.detail.block:next.event==='receipt.issued'?'completed a recorded mission':'joined the crew'}. Inspect the actual contribution.`}
+ else if(territory){destination='crew';title.textContent='Territory status changed.';detail.textContent='Your crew’s held blocks are different from your last visit. Inspect the current leases.'}
+ else if(rival){destination='crew';title.textContent=move.crew+' occupied the '+move.block+'.';detail.textContent='NPC district move. Check current control before planning your claim.'}else{title.textContent='Your Agent has a new receipt.';detail.textContent='Review the recorded outcome and the decisions behind it.'}
+ panel.classList.remove('hidden');button.onclick=()=>{panel.classList.add('hidden');setTab(destination)};
 }
-async function api(path, body) {
-  let r;
-  try {
-    r = await fetch(new URL(path.replace(/^\//, ''), appRoot), {
-      method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, 'X-Request-ID': crypto.randomUUID() },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-  } catch { throw Error('Connection lost. Check your network, then retry.'); }
-  let j;
-  try { j = await r.json(); } catch { throw Error('The service returned an unreadable response. Please retry.'); }
-  if (!r.ok) {
-    if (r.status === 401 && state) {
-      const demo = state.agent.mode === 'demo';
-      state = null; csrf = '';
-      $('#experience').classList.add('hidden');
-      $('#login').classList.remove('hidden');
-      $('#enter').classList.toggle('hidden', !demo);
-      $('#login-text').textContent = demo ? 'Your sandbox session expired. Re-enter to continue with a new session.' : 'Your session expired. Return from KULT World to bind this same Agent again.';
-    }
-    throw Error(j.error || 'Request failed');
-  }
-  return j;
+async function refresh(checkAway=false){const previous=state?readSnapshot(state.agent.id):null,before=state;state=await api('/api/state');csrf=state.csrf;if(state.mission){selectedJob=null;resultToShow=null}const top=state.receipts[0];if(before&&top&&top.id!==before.receipts[0]?.id&&CARD_JOBS[top.missionType])resultToShow=top;render();if(checkAway)showReturn(previous||readSnapshot(state.agent.id));saveSnapshot()}
+function setTab(t){window.KultWorldUI?.closeConsole();tab=t;document.body.dataset.view=t;window.dispatchEvent(new Event('kult:view'));$$('.screen').forEach(e=>e.classList.toggle('hidden',e.id!==t||!state));$$('.nav').forEach(b=>{b.classList.toggle('active',b.dataset.tab===t);if(b.dataset.tab===t)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(state)render();window.scrollTo({top:0,behavior:'auto'})}
+function render(){
+ $('#login').classList.add('hidden');$('#experience').classList.remove('hidden');$$('.screen').forEach(e=>e.classList.toggle('hidden',e.id!==tab));$('#mode').textContent=state.agent.mode==='demo'?'SANDBOX':'KULT CONNECTED';$('#mode').classList.toggle('connected',state.agent.mode!=='demo');
+ for(const k of ['supplies','intel','influence'])$('#'+k).textContent=state.agent[k];$('#alert').textContent=state.agent.alert+' / 4';document.body.dataset.alert=String(state.agent.alert);$('#season').textContent=String(state.season).padStart(2,'0');$('#agent-name').textContent=state.agent.name;
+ $('#agent-subtitle').textContent=state.agent.mode==='demo'?'LOCAL DEMO · NOT YOUR ARENA AGENT':state.agent.id;
+ $('#agent-memory').textContent=`Syndicates memory · ${state.agentMemory.verifiedRoutes} verified route${state.agentMemory.verifiedRoutes===1?'':'s'} · ${state.agentMemory.linkedManifests} linked manifest${state.agentMemory.linkedManifests===1?'':'s'}`;
+ $('#journey-state').textContent=state.mission?(state.mission.status==='PENDING'?'AWAITING RESULT':`CHOICE ${state.mission.step+1} OF 3`):(state.receipts.length?'RECORD UPDATED':'READY TO EXPLORE');
+ $('#job-board').innerHTML=state.missions.map(m=>{const locked=state.mission||state.agent.policy.stopped||!state.agent.policy.allowed.includes(m.kind)||state.agent.policy.maxSupplies<m.cost||state.agent.supplies<m.cost;return `<button class="job ${selectedJob===m.kind&&!state.mission?'selected':''}" data-job="${m.kind}" ${locked?'disabled':''} aria-label="Review ${esc(m.name)}"><span class="arrow">↗</span><span class="job-icon">${icons[m.kind]}</span><p class="eyebrow">${esc(m.domain.toUpperCase())}${m.repeatToday?' · REPEAT RATE':''}</p><h3>${esc(m.name)}</h3><span>${m.cost} Supply entry · up to ${m.reward} earned</span></button>`}).join('');
+ $$('#job-board [data-job]').forEach(b=>b.onclick=()=>selectJob(b.dataset.job));
+ $('#map-list').innerHTML=state.blocks.map(b=>`<button data-block="${b.id}">${esc(b.name)}<small>${esc(b.kind==='home'?'Protected safehouse':b.faction+' · '+b.kind)}</small></button>`).join('');
+ $$('#map-list [data-block]').forEach(b=>b.onclick=()=>locationAction(state.blocks.find(x=>x.id===b.dataset.block)));
+ renderMission();renderOperation();renderPassport();renderCrew();if(typeof renderSocial==='function')renderSocial();const p=state.agent.policy;$('#budget').value=p.maxSupplies;$('#risk').checked=p.allowRisk;$('#stopped').checked=p.stopped;
+ $('#allowed').innerHTML='<legend>Allowed jobs</legend>'+state.missions.map(m=>`<label class="check"><input type="checkbox" value="${m.kind}" ${p.allowed.includes(m.kind)?'checked':''}> ${esc(m.domain)}</label>`).join('');$('#policy-version').textContent='Policy version '+p.version+' · Applies immediately; mission budgets cannot be increased mid-run.';
+ window.dispatchEvent(new Event('kult:state'));
+ $('#district-status').textContent=p.stopped?'Emergency stop is active.':state.agent.alert>=2?`Alert ${state.agent.alert}/4 raises resistance. Defend, lay low, or resupply.`:state.mission?'A decision is in progress.':state.operation.lead?'Scout report active · depot route ready.':'Scout the canal to reveal the patrol.';
+ $('#lay-low').disabled=state.agent.alert===0||state.agent.supplies<3||!!state.mission;
 }
-async function act(path, body = {}) {
-  if (busy) return;
-  busy = true;
-  document.body.classList.add('busy');
-  $('#mission-panel').setAttribute('aria-busy', 'true');
-  try { await api(path, body); notice(''); await refresh(); } catch (e) { notice(e.message, true); } finally {
-    busy = false;
-    document.body.classList.remove('busy');
-    $('#mission-panel').removeAttribute('aria-busy');
-  }
+function renderOperation(){
+ const op=state.operation,lead=op.lead,active=state.mission;
+ const done=lead&&op.completedReceipt&&state.receipts.some(r=>r.id===op.completedReceipt&&r.context?.scoutReceipt===lead.receiptId);
+ let label,title,detail,cta,kind;
+ if(active){label='OPERATION IN PROGRESS';title='Your Agent is in the field.';detail='Finish or withdraw this mission before taking another assignment. The outcome will change your district record.';cta='Return to your decision →';kind=null}
+ else if(done&&!op.workshop){label='MANIFEST RECOVERED · NEXT: TERRITORY';title='Turn the win into a foothold.';detail='Scout and Heist can earn enough Influence to claim the Copper workshop. Found a crew, contribute Supplies, and give the next operation a real advantage.';cta='Build your crew →';kind='crew'}
+ else if(done){label='CREW FOOTHOLD ACTIVE';title='Your crew changed the district.';detail=`The workshop cuts Heist entry by ${op.crewSynergy?2:1} ${op.crewSynergy?'Supplies':'Supply'}${op.crewSynergy?' with a second contributing member':''}. Your signed Heist receipt links back to the Scout report.`;cta='See the proof →';kind='proof'}
+ else if(op.stale){label='PATROL ROTATED';title='Your last report is stale.';detail='Two recent report-led entries changed the patrol. Scout again, or survey at the depot.';cta='Review Scout →';kind='scout'}
+ else if(lead){label='VERIFIED INTEL · 24-HOUR WINDOW';title=`Patrol confirmed at the ${lead.patrol}.`;detail=`${lead.source==='HIRED_SCOUT'?'A hired Agent’s paid, signed Scout result':'Your signed Scout report'} is usable at the depot until ${new Date(lead.expires*1000).toLocaleString()}. ${op.workshop?`Your crew’s workshop lowers Heist entry by ${op.crewSynergy?2:1} ${op.crewSynergy?'Supplies':'Supply'}.`:''}`;cta='Plan the depot Heist →';kind='heist'}
+ else{label='THE GLASSWATCH MANIFEST';title='Find a route. Take the manifest.';detail='Scout the canal yourself or hire a qualified Agent, then use the verified report at the depot. An unprepared Heist has an uncertain patrol.';cta='Start the Scout →';kind='scout'}
+ $('#operation-state').textContent=label;$('#operation-title').textContent=title;$('#operation-detail').textContent=detail;$('#operation-cta').textContent=cta;
+ $('#operation-hire').classList.toggle('hidden',!!active||!!lead);$('#operation-hire').onclick=()=>{setTab('social');$('#hire-form').scrollIntoView({behavior:'smooth',block:'start'})};
+ $$('.journey [data-chapter]').forEach(e=>e.classList.toggle('complete',e.dataset.chapter==='scout'?!!lead:e.dataset.chapter==='heist'?!!done:!!op.workshop));
+ $('#operation-cta').onclick=()=>{if(kind==='proof'){setTab('passport');const r=state.receipts.find(r=>r.id===op.completedReceipt);if(r)openReplay(r)}else if(kind==='crew')setTab('crew');else if(kind)selectJob(kind);else{setTab('district');window.KultWorldUI?.openConsole()}};
 }
-
-// ---------------------------------------------------------------- what changed while away
-function readSnapshot(id) { try { return JSON.parse(localStorage.getItem('syndicates-last-seen:' + id) || 'null'); } catch { return null; } }
-function saveSnapshot() {
-  try {
-    localStorage.setItem('syndicates-last-seen:' + state.agent.id, JSON.stringify({
-      rivalDay: state.rivals.latest.day, receipt: state.receipts[0]?.id || null, activity: state.crew?.activity?.[0]?.at || null,
-      territory: state.crew?.territory?.map((x) => x.block + ':' + x.expires).sort() || [],
-    }));
-  } catch { /* private mode */ }
+function selectJob(kind){if(state?.mission){notice('Finish your current job first.');return}const job=state.missions.find(m=>m.kind===kind);if(!job)return;selectedJob=kind;resultToShow=null;window.kultDistrict?.visit(kind);setTab('district');renderMission();window.dispatchEvent(new Event('kult:state'));window.KultWorldUI?.openConsole()}
+function locationAction(b){if(b.kind==='home'){notice('Lantern House is protected. Your Agent returns here after every mission.');return}if(b.kind==='territory'){setTab('crew');return}selectJob(b.kind)}
+// ---- Mission console as cards: one clear thing at a time (brief, decision, countdown, result, next step).
+const CARD_JOBS={scout:{verb:'Scout',place:'Canal Watch',art:'canal-watch'},heist:{verb:'Heist',place:'Midnight Depot',art:'midnight-depot'},negotiate:{verb:'Negotiate',place:'Union Crossing',art:'union-crossing'},defend:{verb:'Defend',place:'Signal Gate',art:'signal-gate'}};
+const cardArt=n=>new URL('art/cards/'+n+'.webp',appRoot).href;
+const cardImg=(n,cls='')=>`<img class="${cls}" src="${cardArt(n)}" alt="" decoding="async">`;
+const cardPlural=(n,one,many)=>Number(n)===1?one:many;
+const cardChip=(cls,n,word)=>`<span class="cc-chip ${cls}"><i></i><b>${n}</b> <span>${word}</span></span>`;
+const cardSupply=n=>cardChip('sup',n,cardPlural(n,'Supply','Supplies'));
+const cardTag=k=>`<span class="cc-tag"><span>${CARD_JOBS[k]?.verb||esc(k)}</span> · <span>${CARD_JOBS[k]?.place||''}</span></span>`;
+let resultToShow=null,pendingTotal={id:null,seconds:1};
+function cardFrame(p,k,html){p.dataset.k=k;p.innerHTML=`<div class="cc k-${k}">${html}</div>`}
+function cardProgress(){const op=state.operation,lead=op.lead;const done=!!(op.completedReceipt&&state.receipts.some(r=>r.id===op.completedReceipt&&(!lead||r.context?.scoutReceipt===lead.receiptId)));return{op,lead,done}}
+function cardNext(){
+  const{op,lead,done}=cardProgress();
+  if(op.stale)return{k:'scout',art:'canal-watch',eyebrow:'YOUR REPORT WENT STALE',title:'The patrol rotated.',text:'Two recent Heists used your report, so the patrol moved. Scout again for a fresh route, or go to the depot and survey the entrance there.',primary:['Scout again',()=>selectJob('scout')],secondary:['Open the Heist brief',()=>selectJob('heist')]};
+  if(done&&!op.workshop)return{k:'crew',art:'copper-workshop',eyebrow:'MANIFEST RECOVERED',title:'Turn the win into territory.',text:'Form a crew of up to five players. With 4 Influence and 5 Supplies pooled, your crew can lease the Copper Workshop, which makes Heists cheaper.',primary:['Open Crew',()=>setTab('crew')]};
+  if(done)return{k:'done',art:'copper-workshop',eyebrow:'YOUR CREW HOLDS THE WORKSHOP',title:'Your crew changed the district.',text:`While the lease lasts, Heists cost ${op.crewSynergy?2:1} ${op.crewSynergy?'Supplies':'Supply'} less. Keep running missions to earn Influence for the season.`,primary:['See your Passport',()=>setTab('passport')]};
+  if(lead){const until=new Date(lead.expires*1000).toLocaleString([],{hour:'2-digit',minute:'2-digit',month:'short',day:'numeric'});return{k:'heist',art:'midnight-depot',eyebrow:'STEP 2 · THE HEIST',title:'Take the manifest at Midnight Depot.',text:`Your Scout report says the patrol is at the ${lead.patrol}. Use it to choose the safer entrance. The report is good until ${until}.`,primary:['Open the Heist brief',()=>selectJob('heist')]}}
+  const first=!state.receipts.length;
+  return{k:'scout',art:'canal-watch',eyebrow:first?'STEP 1 · YOUR FIRST JOB':'STEP 1 · THE SCOUT',title:'Scout Canal Watch.',text:'A patrol guards one entrance to Midnight Depot. Send your Agent to find out which one. You make three quick calls, then your Agent brings back a report.',primary:['Open the Scout brief',()=>selectJob('scout')],steps:first};
 }
-function showReturn(previous) {
-  if (!previous) return;
-  const next = state.crew?.activity?.find((x) => x.at > (previous.activity || 0) && x.agent !== state.agent.id);
-  const newReceipt = state.receipts[0]?.id && state.receipts[0].id !== previous.receipt;
-  const territory = JSON.stringify(state.crew?.territory?.map((x) => x.block + ':' + x.expires).sort() || []) !== JSON.stringify(previous.territory || []);
-  const move = state.rivals.latest, rival = previous.rivalDay != null && move.day > previous.rivalDay && move.block;
-  if (!next && !newReceipt && !territory && !rival) return;
-  let destination = 'passport', title, detail;
-  if (next) {
-    destination = 'crew'; title = 'Your crew made a move.';
-    detail = `${next.name} ${next.event === 'crew.deposit' ? 'contributed ' + next.detail.amount + ' Supplies' : next.event === 'territory.claimed' ? 'leased the ' + next.detail.block : next.event === 'receipt.issued' ? 'completed a recorded mission' : 'joined the crew'}.`;
-  } else if (territory) { destination = 'crew'; title = 'Territory status changed.'; detail = 'Your crew’s held blocks are different from your last visit.'; }
-  else if (rival) { destination = 'crew'; title = move.crew + ' occupied the ' + move.block + '.'; detail = 'A rival crew moved. Check who holds what before you plan a claim.'; }
-  else { title = 'Your Agent has a new receipt.'; detail = 'Review the recorded outcome and the decisions behind it.'; }
-  $('#return-title').textContent = title;
-  $('#return-detail').textContent = detail;
-  $('#return-brief').classList.remove('hidden');
-  $('#return-action').onclick = () => { $('#return-brief').classList.add('hidden'); setTab(destination); };
+function cardBlocked(job){const p=state.agent.policy;if(p.stopped)return'Emergency stop is on. Turn it off in Permissions.';if(!p.allowed.includes(job.kind))return'Your Permissions don’t allow this job.';if(p.maxSupplies<job.cost)return'Your mission cap in Permissions is below the entry cost.';if(state.agent.supplies<job.cost)return'You need more Supplies. Try the daily resupply.';return''}
+function renderMission(){
+  const m=state.mission,p=$('#mission-panel');
+  p.classList.remove('brief-mode');
+  if(m&&m.status==='PENDING')return cardWait(p,m);
+  if(m)return cardDecision(p,m);
+  if(resultToShow)return cardResult(p,resultToShow);
+  const job=state.missions.find(x=>x.kind===selectedJob);
+  if(job){p.classList.add('brief-mode');return cardBrief(p,job)}
+  const n=cardNext();
+  cardFrame(p,n.k,`<div class="cc-hero"><div><p class="eyebrow">${n.eyebrow}</p><h2>${n.title}</h2></div>${cardImg(n.art,'cc-art')}</div><p class="cc-intro">${n.text}</p>${n.steps?`<ol class="cc-steps"><li><b>1</b><span>Read the brief. Reading is free.</span></li><li><b>2</b><span>Make three calls. Your Agent shows a clue each time.</span></li><li><b>3</b><span>Return after a short countdown to see what happened.</span></li></ol>`:''}<button id="cc-go" class="primary" type="button">${n.primary[0]}</button>${n.secondary?`<button id="cc-alt" class="cc-link" type="button">${n.secondary[0]}</button>`:''}`);
+  $('#cc-go').onclick=n.primary[1];if(n.secondary)$('#cc-alt').onclick=n.secondary[1];
 }
-
-async function refresh(checkAway = false) {
-  const previous = state ? readSnapshot(state.agent.id) : null;
-  const before = state;
-  state = await api('/api/state');
-  csrf = state.csrf;
-  if (state.mission) { selectedJob = null; resultToShow = null; }
-  // A mission that resolved during this visit gets its result card.
-  const top = state.receipts[0];
-  if (before && top && top.id !== before.receipts[0]?.id && JOBS[top.missionType]) resultToShow = top;
-  render(before);
-  if (checkAway) showReturn(previous || readSnapshot(state.agent.id));
-  saveSnapshot();
+function cardBrief(p,job){
+  const reason=cardBlocked(job),a=state.agent,lead=state.operation.lead,J=CARD_JOBS[job.kind]||CARD_JOBS.scout;
+  let tip='';
+  if(job.kind==='heist')tip=lead&&!state.operation.stale?`<div class="cc-call"><p>Your Scout report says the patrol is at the ${esc(lead.patrol)}. Pick the other entrance for the best plan.</p></div>`:`<div class="cc-call warn"><p>No fresh Scout report, so you won’t know where the patrol is. You can still go in: spend 2 Intel on an entry survey, or guess.</p></div>`;
+  else if(job.kind==='scout')tip=`<div class="cc-call"><p>Tip: cross-check the beacons with Intel, then report the route with its uncertainty. That report helps you at the depot for up to 24 hours.</p></div>`;
+  else if(job.kind==='defend')tip=`<div class="cc-call"><p>A clean Defense lowers Alert, which makes every other mission easier.</p></div>`;
+  else if(job.kind==='negotiate')tip=`<div class="cc-call"><p>Read what the Union needs before you offer. A broken agreement makes later terms worse.</p></div>`;
+  cardFrame(p,job.kind,`<div class="cc-hero"><div>${cardTag(job.kind)}<h2>${esc(job.name)}</h2></div>${cardImg(J.art,'cc-art')}</div><p class="cc-intro">${esc(job.intro)}</p>
+  <div class="cc-facts"><div class="${a.supplies<job.cost?'warn':''}"><small>Entry cost</small><b>${job.cost} ${cardPlural(job.cost,'Supply','Supplies')}</b></div><div><small>You have</small><b>${a.supplies} ${cardPlural(a.supplies,'Supply','Supplies')}</b></div><div><small>Reward on success</small><b>up to ${job.reward}</b></div><div class="${a.alert>=2?'warn':''}"><small>Alert</small><b>${a.alert}/4</b></div></div>
+  ${tip}${job.repeatToday?`<div class="cc-call warn"><p>You already ran this job today, so it pays less and gives no Influence.</p></div>`:''}${a.alert>=2?`<div class="cc-call warn"><p>Alert is ${a.alert}/4, so the district resists harder. Defend or lay low first if you can.</p></div>`:''}${reason?`<div class="cc-call bad"><p>${reason}</p></div>`:''}
+  <button id="commit-job" class="primary" type="button" ${reason?'disabled':''}>Commit to this job</button><button id="clear-job" class="cc-link" type="button">Choose a different job</button>
+  <p class="fine">Three decisions, then a short countdown. Wins, misses and walk-aways all go on your Passport. Game resources only.</p>`);
+  $('#commit-job').onclick=()=>act('/api/missions',{kind:job.kind});
+  $('#clear-job').onclick=()=>{selectedJob=null;renderMission();window.dispatchEvent(new Event('kult:state'))};
 }
-
-// ---------------------------------------------------------------- tabs
-function setTab(t) {
-  tab = t;
-  document.body.dataset.view = t;
-  window.dispatchEvent(new Event('kult:view'));
-  $$('.screen').forEach((e) => e.classList.toggle('hidden', e.id !== t || !state));
-  $$('.nav').forEach((b) => {
-    b.classList.toggle('active', b.dataset.tab === t);
-    if (b.dataset.tab === t) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
-  });
-  if (state) render();
-  window.scrollTo({ top: 0, behavior: 'auto' });
+function cardOptionBlock(m,o,cap){const a=state.agent,p=a.policy;if(p.stopped)return'Emergency stop is on';if(!p.allowed.includes(m.kind))return'Not allowed by Permissions';if(m.spent+o.supplies>cap)return'Over your mission cap';if(o.supplies>a.supplies)return'Not enough Supplies';if(o.intel>a.intel)return'Not enough Intel';return''}
+function cardDecision(p,m){
+  const cap=Math.min(m.policy.maxSupplies,state.agent.policy.maxSupplies),clues=m.context?.situation?.clues||[];
+  const options=m.stage.options.map(o=>{const why=cardOptionBlock(m,o,cap);const cost=[o.supplies?cardSupply(o.supplies):'',o.intel?cardChip('int',o.intel,'Intel'):''].join('')||'<span class="cc-chip free">Free</span>';return`<button class="cc-choice" type="button" data-choice="${esc(o.id)}" ${why?'disabled':''}><span>${esc(o.text)}</span><span class="cc-cost">${cost}${why?`<span class="cc-chip block">${why}</span>`:''}</span></button>`}).join('');
+  cardFrame(p,m.kind,`<div class="cc-dec-head">${cardTag(m.kind)}<span class="cc-pips" aria-label="Decision ${m.step+1} of 3">${[0,1,2].map(i=>`<i class="${i<=m.step?'on':''}"></i>`).join('')}<span>${m.step+1}/3</span></span></div>
+  <h2>${esc(m.stage.title)}</h2>
+  <div class="cc-situation"><span class="cc-label">The situation</span><p>${esc(m.stage.text)}</p></div>
+  <div class="cc-note"><img src="${cardArt('agent-face')}" alt=""><div class="cc-bubble"><span class="cc-label">Your Agent’s field note</span>${clues.length?`<div class="cc-clues">${clues.map(c=>`<span>${esc(c)}</span>`).join('')}</div>`:''}<p>${esc(m.recommendation.tradeoff)}</p></div></div>
+  <p class="eyebrow">Your call</p><div class="cc-choices">${options}</div>
+  <div class="cc-foot"><span class="cc-budget"><span>Supplies used</span><span class="cc-bar"><i style="width:${Math.min(100,m.spent/Math.max(cap,1)*100)}%"></i></span><b>${m.spent}/${cap}</b></span><button id="withdraw" class="cc-link" type="button">Walk away</button></div>`);
+  $$('#mission-panel [data-choice]').forEach(b=>b.onclick=()=>act('/api/missions/'+m.id+'/choice',{step:m.step,choice:b.dataset.choice}));
+  $('#withdraw').onclick=async()=>{if(await confirmAction('Walk away from this mission?','It goes on your Passport as a walk-away. Supplies already spent are not refunded.','Walk away'))await act('/api/missions/'+m.id+'/withdraw')};
 }
-function showStage() {
-  if (tab !== 'district') setTab('district');
-  const p = $('#mission-panel');
-  if (p.getBoundingClientRect().top < 100 || p.getBoundingClientRect().top > innerHeight * 0.5) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// ---------------------------------------------------------------- render
-function bump(prev) {
-  if (!prev) return;
-  for (const [k, id] of [['supplies', 'supplies'], ['intel', 'intel'], ['influence', 'influence'], ['alert', 'alert']]) {
-    if (prev.agent[k] !== state.agent[k]) { const c = $('#' + id).parentElement; c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump'); }
-  }
-}
-function render(prev) {
-  $('#login').classList.add('hidden');
-  $('#experience').classList.remove('hidden');
-  $$('.screen').forEach((e) => e.classList.toggle('hidden', e.id !== tab));
-  $$('.nav').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
-  const a = state.agent;
-  $('#mode').textContent = a.mode === 'demo' ? 'SANDBOX' : 'KULT CONNECTED';
-  $('#mode').classList.toggle('connected', a.mode !== 'demo');
-  for (const k of ['supplies', 'intel', 'influence']) $('#' + k).textContent = a[k];
-  $('#alert').textContent = a.alert + '/4';
-  document.body.dataset.alert = String(a.alert);
-  bump(prev);
-  $('#season').textContent = String(state.season).padStart(2, '0');
-  $('#agent-name').textContent = a.name;
-  $('#agent-subtitle').textContent = a.mode === 'demo' ? 'LOCAL SANDBOX · PRACTICE IDENTITY' : a.id;
-  $('#agent-memory').textContent = `Syndicates memory · ${state.agentMemory.verifiedRoutes} verified route${state.agentMemory.verifiedRoutes === 1 ? '' : 's'} · ${state.agentMemory.linkedManifests} linked manifest${state.agentMemory.linkedManifests === 1 ? '' : 's'}`;
-  renderGoal();
-  renderStage();
-  renderDeck();
-  renderPassport();
-  renderCrew();
-  if (typeof renderSocial === 'function') renderSocial();
-  renderPolicy();
-  const p = a.policy;
-  $('#district-status').textContent = p.stopped ? 'Emergency stop is on. Turn it off in Permissions to play.'
-    : a.alert >= 2 ? `Alert is ${a.alert}/4, so missions are harder. Defend at Signal Gate or lay low.`
-      : 'Resupply tops up Supplies and Intel. Laying low lowers Alert.';
-  $('#lay-low').disabled = a.alert === 0 || a.supplies < 3 || !!state.mission;
-  window.dispatchEvent(new Event('kult:state'));
-}
-
-// The operation: Scout the canal, Heist the depot, then hold territory with a crew.
-function progress() {
-  const op = state.operation, lead = op.lead;
-  const done = !!(op.completedReceipt && state.receipts.some((r) => r.id === op.completedReceipt && (!lead || r.context?.scoutReceipt === lead.receiptId)));
-  return { op, lead, done, heistTried: state.receipts.some((r) => r.missionType === 'heist') };
-}
-function renderGoal() {
-  const { op, lead, done } = progress();
-  const step = op.workshop && done ? 4 : done ? 3 : lead && !op.stale ? 2 : 1;
-  $('#operation-state').textContent = step === 4 ? 'GOAL COMPLETE' : state.receipts.length ? 'YOUR GOAL' : 'YOUR FIRST GOAL';
-  $('#operation-title').textContent = step >= 3 ? 'Hold territory with a crew' : 'Recover the manifest';
-  $$('.path [data-chapter]').forEach((e, i) => {
-    e.classList.toggle('complete', i + 1 < step);
-    e.classList.toggle('current', i + 1 === step);
-  });
-}
-
-function renderStage() {
-  const p = $('#mission-panel'), m = state.mission;
-  if (m && m.status === 'PENDING') return stageWait(p, m);
-  if (m) return stageDecision(p, m);
-  if (resultToShow) return stageResult(p, resultToShow);
-  const job = state.missions.find((x) => x.kind === selectedJob);
-  if (job) return stageBrief(p, job);
-  return stageNext(p);
-}
-function frame(p, k, html) {
-  p.className = 'stage card k-' + k;
-  p.innerHTML = `<div class="band"></div><div class="inner">${html}</div>`;
-}
-
-// What to do next, when nothing is running.
-function nextStep() {
-  const { op, lead, done } = progress();
-  const job = (k) => state.missions.find((m) => m.kind === k);
-  if (op.stale) return { k: 'scout', art: 'canal-watch', eyebrow: 'YOUR REPORT WENT STALE', title: 'The patrol rotated.', text: 'Two recent Heists used your report, so the patrol moved. Scout again for a fresh route, or go to the depot and survey the entrance there.', primary: ['Scout again', () => selectJob('scout')], secondary: ['Open the Heist brief', () => selectJob('heist')], next: 'scout' };
-  if (done && !op.workshop) return { k: 'crew', art: 'copper-workshop', eyebrow: 'MANIFEST RECOVERED', title: 'Turn the win into territory.', text: 'Form a crew of up to five players. With 4 Influence and 5 Supplies pooled, your crew can lease the Copper Workshop, which makes Heists cheaper.', primary: ['Open Crew', () => setTab('crew')], secondary: ['Watch the Heist replay', () => { const r = state.receipts.find((x) => x.id === op.completedReceipt); if (r) openReplay(r); }], next: null };
-  if (done) return { k: 'done', art: 'copper-workshop', eyebrow: 'YOUR CREW HOLDS THE WORKSHOP', title: 'Your crew changed the district.', text: `While the lease lasts, Heists cost ${op.crewSynergy ? 2 : 1} ${op.crewSynergy ? 'Supplies' : 'Supply'} less. Keep running missions to earn Influence for the season.`, primary: ['See your Passport', () => setTab('passport')], next: null };
-  if (lead) {
-    const until = new Date(lead.expires * 1000).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' });
-    return { k: 'heist', art: 'midnight-depot', eyebrow: 'STEP 2 · THE HEIST', title: 'Take the manifest at Midnight Depot.', text: `Your Scout report says the patrol is at the ${lead.patrol}. Use it to choose the safer entrance. The report is good until ${until}.`, primary: ['Open the Heist brief', () => selectJob('heist')], cost: job('heist')?.cost, next: 'heist' };
-  }
-  const first = !state.receipts.length;
-  return { k: 'scout', art: 'canal-watch', eyebrow: first ? 'STEP 1 · YOUR FIRST JOB' : 'STEP 1 · THE SCOUT', title: 'Scout Canal Watch.', text: 'A patrol guards one entrance to Midnight Depot. Send your Agent to find out which one. You make three quick calls, then your Agent brings back a report.', primary: ['Open the Scout brief', () => selectJob('scout')], secondary: first ? null : ['Or hire a Scout', () => setTab('social')], cost: job('scout')?.cost, next: 'scout' };
-}
-function stageNext(p) {
-  const n = nextStep();
-  frame(p, n.k, `<div class="hero"><div><p class="eyebrow">${n.eyebrow}</p><h2>${n.title}</h2><p class="intro">${n.text}</p></div>${img(n.art, 'hero-art')}</div>
-    ${n.next === 'scout' && !state.receipts.length ? `<ol class="steps-3"><li><b>1 · Read the brief</b><span>See the cost first. Reading is free.</span></li><li><b>2 · Make three calls</b><span>Your Agent shows a clue each time.</span></li><li><b>3 · Return</b><span>After a short countdown, see what happened.</span></li></ol>` : ''}
-    <div class="actions"><button id="stage-go" class="btn primary big" type="button">${n.primary[0]}</button>${n.secondary ? `<button id="stage-alt" class="btn ghost" type="button">${n.secondary[0]}</button>` : ''}</div>`);
-  $('#stage-go').onclick = n.primary[1];
-  if (n.secondary) $('#stage-alt').onclick = n.secondary[1];
-}
-
-function blockedReason(job) {
-  const p = state.agent.policy;
-  if (state.mission) return 'Finish your current mission first.';
-  if (p.stopped) return 'Emergency stop is on. Turn it off in Permissions.';
-  if (!p.allowed.includes(job.kind)) return 'Your Permissions don’t allow this job.';
-  if (p.maxSupplies < job.cost) return 'Your mission cap in Permissions is below the entry cost.';
-  if (state.agent.supplies < job.cost) return 'You need more Supplies. Try the daily resupply.';
-  return '';
-}
-function stageBrief(p, job) {
-  const reason = blockedReason(job), a = state.agent, lead = state.operation.lead, J = JOBS[job.kind];
-  const faction = state.blocks.find((b) => b.kind === job.kind)?.faction || 'District';
-  let tip = '';
-  if (job.kind === 'heist') tip = lead && !state.operation.stale
-    ? `<div class="callout"><p>Your Scout report says the patrol is at the ${esc(lead.patrol)}. Pick the other entrance for the best plan.</p></div>`
-    : `<div class="callout warn"><p>No fresh Scout report, so you won’t know where the patrol is. You can still go in: spend 2 Intel on an entry survey, or guess.</p></div>`;
-  else if (job.kind === 'scout') tip = `<div class="callout"><p>Tip: cross-check the beacons with Intel, then report the route with its uncertainty. That report helps you at the depot for up to 24 hours.</p></div>`;
-  else if (job.kind === 'defend') tip = `<div class="callout"><p>A clean Defense lowers Alert, which makes every other mission easier.</p></div>`;
-  else if (job.kind === 'negotiate') tip = `<div class="callout"><p>Read what the Union needs before you offer. A broken agreement makes later terms worse.</p></div>`;
-  frame(p, job.kind, `<div class="hero"><div>${kindTag(job.kind)}<h2>${esc(job.name)}</h2><p class="intro">${esc(job.intro)}</p></div>${img(J.art, 'hero-art')}</div>
-    <div class="facts">
-      <div class="fact ${a.supplies < job.cost ? 'warn' : ''}"><small>Entry cost</small><b>${job.cost} ${plural(job.cost, 'Supply', 'Supplies')}</b></div>
-      <div class="fact"><small>You have</small><b>${a.supplies} ${plural(a.supplies, 'Supply', 'Supplies')}</b></div>
-      <div class="fact"><small>Reward on success</small><b>up to ${job.reward}</b></div>
-      <div class="fact ${a.alert >= 2 ? 'warn' : ''}"><small>Alert</small><b>${a.alert}/4</b></div>
-      <div class="fact opp"><small>Opposition</small><b>${esc(faction)}</b></div>
-    </div>
-    ${tip}
-    ${job.repeatToday ? `<div class="callout warn"><p>You already ran this job today, so it pays less and gives no Influence.</p></div>` : ''}
-    ${a.alert >= 2 ? `<div class="callout warn"><p>Alert is ${a.alert}/4, so the district resists harder. Defend or lay low first if you can.</p></div>` : ''}
-    ${reason ? `<div class="callout bad"><p>${reason}</p></div>` : ''}
-    <div class="actions"><button id="commit-job" class="btn primary big" type="button" ${reason ? 'disabled' : ''}>Commit to this job</button><button id="clear-job" class="btn ghost" type="button">Back</button></div>
-    <p class="fine">Three decisions, then a short countdown. Wins, misses and walk-aways all go on your Passport. Game resources only.</p>`);
-  $('#commit-job').onclick = () => act('/api/missions', { kind: job.kind });
-  $('#clear-job').onclick = () => { selectedJob = null; renderStage(); renderDeck(); };
-}
-
-function optionBlock(m, o, cap) {
-  const a = state.agent, p = a.policy;
-  if (p.stopped) return 'Emergency stop is on';
-  if (!p.allowed.includes(m.kind)) return 'Not allowed by Permissions';
-  if (m.spent + o.supplies > cap) return 'Over your mission cap';
-  if (o.supplies > a.supplies) return 'Not enough Supplies';
-  if (o.intel > a.intel) return 'Not enough Intel';
-  return '';
-}
-function stageDecision(p, m) {
-  const cap = Math.min(m.policy.maxSupplies, state.agent.policy.maxSupplies), J = JOBS[m.kind] || JOBS.scout;
-  const clues = m.context?.situation?.clues || [];
-  const options = m.stage.options.map((o) => {
-    const why = optionBlock(m, o, cap);
-    const cost = [o.supplies ? supplyChip(o.supplies) : '', o.intel ? chip('int', o.intel, 'Intel') : ''].join('') || '<span class="chip free">Free</span>';
-    return `<button class="choice" type="button" data-choice="${esc(o.id)}" ${why ? 'disabled' : ''}><span>${esc(o.text)}</span><span class="cost">${cost}${why ? `<span class="chip block">${why}</span>` : ''}</span></button>`;
-  }).join('');
-  frame(p, m.kind, `<div class="dec-head"><div class="where">${img(J.art)}${kindTag(m.kind)}</div><div class="pips" aria-label="Decision ${m.step + 1} of 3">${[0, 1, 2].map((i) => `<i class="${i <= m.step ? 'on' : ''}"></i>`).join('')}<span>${m.step + 1}/3</span></div></div>
-    <h2>${esc(m.stage.title)}</h2>
-    <div class="situation"><span class="label">The situation</span><p>${esc(m.stage.text)}</p></div>
-    <div class="note"><img src="${art('agent-face')}" alt=""><div class="bubble"><span class="label">Your Agent’s field note</span>${clues.length ? `<div class="clue-list">${clues.map((c) => `<span>${esc(c)}</span>`).join('')}</div>` : ''}<p>${esc(m.recommendation.tradeoff)}</p></div></div>
-    <p class="eyebrow">Your call</p>
-    <div class="choices">${options}</div>
-    <div class="dec-foot"><div class="budget"><span>Supplies used</span><span class="bar"><i style="width:${Math.min(100, (m.spent / Math.max(cap, 1)) * 100)}%"></i></span><b>${m.spent}/${cap}</b></div><button id="withdraw" class="walk" type="button">Walk away</button></div>`);
-  $$('#mission-panel [data-choice]').forEach((b) => (b.onclick = () => act('/api/missions/' + m.id + '/choice', { step: m.step, choice: b.dataset.choice })));
-  $('#withdraw').onclick = async () => {
-    if (await confirmAction('Walk away from this mission?', 'It goes on your Passport as a walk-away. Supplies already spent are not refunded.', 'Walk away')) await act('/api/missions/' + m.id + '/withdraw');
-  };
-}
-
-function stageWait(p, m) {
-  if (pendingTotal.id !== m.id) pendingTotal = { id: m.id, seconds: Math.max(1, Math.ceil(m.ready - Date.now() / 1000)) };
-  frame(p, m.kind, `<div class="wait"><div class="ring"><svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="prog" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg><b id="countdown-n">…</b></div>
-    <div>${kindTag(m.kind)}<h2>Your Agent is in the field.</h2><p class="intro">Your three calls are locked in. When the timer ends, select Return to see what happened.</p>
-    <p id="countdown" class="fine" role="status"></p>
-    <div class="actions"><button id="resolve" class="btn primary big" type="button" disabled>Return</button></div>
-    <p class="fine">The outcome was sealed before your first choice, so nobody can change it now.</p></div></div>`);
-  $('#resolve').onclick = () => act('/api/missions/' + m.id + '/resolve');
+function cardWait(p,m){
+  if(pendingTotal.id!==m.id)pendingTotal={id:m.id,seconds:Math.max(1,Math.ceil(m.ready-Date.now()/1000))};
+  cardFrame(p,m.kind,`${cardTag(m.kind)}<div class="cc-wait"><div class="cc-ring"><svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="prog" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg><b id="countdown-n">…</b></div><div><h2>Your Agent is in the field.</h2><p class="cc-intro">Your three calls are locked in. When the timer ends, select Return to see what happened.</p></div></div>
+  <p id="countdown" class="fine" role="status"></p><button id="resolve" class="primary" type="button" disabled>Return</button>
+  <p class="fine">The outcome was sealed before your first choice, so nobody can change it now.</p>`);
+  $('#resolve').onclick=()=>act('/api/missions/'+m.id+'/resolve');
   updateCountdown();
 }
-function updateCountdown() {
-  const m = state?.mission;
-  if (m?.status !== 'PENDING' || !$('#countdown')) return;
-  const remain = Math.max(0, Math.ceil(m.ready - Date.now() / 1000));
-  $('#countdown-n').textContent = remain ? remain + 's' : '✓';
-  $('#countdown').textContent = remain ? 'Resolving in ' + remain + ' seconds…' : 'Your outcome is ready.';
-  const ring = $('#mission-panel .prog');
-  if (ring) ring.style.strokeDashoffset = String(326.7 * (remain / pendingTotal.seconds));
-  $('#resolve').disabled = remain > 0;
+function updateCountdown(){
+  const m=state?.mission;if(m?.status!=='PENDING'||!$('#countdown'))return;
+  const remain=Math.max(0,Math.ceil(m.ready-Date.now()/1000));
+  $('#countdown-n').textContent=remain?remain+'s':'✓';
+  $('#countdown').textContent=remain?'Resolving in '+remain+' seconds…':'Your outcome is ready.';
+  const ring=$('#mission-panel .prog');if(ring)ring.style.strokeDashoffset=String(326.7*(remain/pendingTotal.seconds));
+  $('#resolve').disabled=remain>0;
 }
-setInterval(updateCountdown, 500);
-
-function stageResult(p, r) {
-  const k = r.missionType, ok = r.outcome === 'SUCCESS', lead = state.operation.lead;
-  const stamp = { SUCCESS: 'SUCCESS', MISS: 'MISSED', WITHDRAWN: 'WALKED AWAY', EXPIRED: 'EXPIRED' }[r.outcome] || r.outcome;
-  const title = ok ? { scout: 'Patrol found.', heist: 'Manifest recovered.', negotiate: 'Deal struck.', defend: 'District defended.' }[k] : r.outcome === 'MISS' ? 'A miss. It stays on the record.' : 'You walked away.';
-  const why = k === 'scout' && !ok ? 'A missed Scout gives no patrol answer. Scout again, or go to the depot without a report.'
-    : k === 'scout' && ok ? 'Your report names the patrol. Take it to Midnight Depot and choose the other entrance.'
-      : k === 'heist' && ok ? 'Your Passport now links this Heist to the Scout report behind it.' : '';
+function cardResult(p,r){
+  const k=r.missionType,ok=r.outcome==='SUCCESS',lead=state.operation.lead;
+  const stamp={SUCCESS:'SUCCESS',MISS:'MISSED',WITHDRAWN:'WALKED AWAY',EXPIRED:'EXPIRED'}[r.outcome]||r.outcome;
+  const title=ok?{scout:'Patrol found.',heist:'Manifest recovered.',negotiate:'Deal struck.',defend:'District defended.'}[k]:r.outcome==='MISS'?'A miss. It stays on the record.':'You walked away.';
+  const why=k==='scout'&&!ok?'A missed Scout gives no patrol answer. Scout again, or go to the depot without a report.':k==='scout'&&ok?'Your report names the patrol. Take it to Midnight Depot and choose the other entrance.':k==='heist'&&ok?'Your Passport now links this Heist to the Scout report behind it.':'';
   let primary;
-  if (k === 'scout') primary = ok && lead ? ['Plan the Heist', () => selectJob('heist')] : ['Scout again', () => selectJob('scout')];
-  else if (k === 'heist') primary = ok ? (state.operation.workshop ? ['See your Passport', () => setTab('passport')] : ['Next: form a crew', () => setTab('crew')]) : [lead && !state.operation.stale ? 'Try the Heist again' : 'Scout first', () => selectJob(lead && !state.operation.stale ? 'heist' : 'scout')];
-  else primary = ['Back to missions', () => {}];
-  const rw = r.reward || {};
-  frame(p, k, `<div class="result"><div class="stamp ${esc(r.outcome)}">${stamp}</div><h2>${title}</h2>
-    <p class="summary">${esc(r.replay.at(-1)?.text || '')}</p>
-    ${why ? `<p class="why">${why}</p>` : ''}
-    <div class="cost">${supplyChip('+' + (rw.supplies || 0))}${chip('int', '+' + (rw.intel || 0), 'Intel')}${chip('inf', '+' + (rw.influence || 0), 'Influence')}</div>
-    <div class="actions"><button id="res-go" class="btn primary big" type="button">${primary[0]}</button><button id="res-replay" class="btn ghost" type="button">Watch replay</button></div>
-    <p class="fine">Saved to your Passport.</p></div>`);
-  $('#res-go').onclick = () => { resultToShow = null; primary[1](); if (!selectedJob) renderStage(); };
-  $('#res-replay').onclick = () => openReplay(r);
+  if(k==='scout')primary=ok&&lead?['Plan the Heist',()=>selectJob('heist')]:['Scout again',()=>selectJob('scout')];
+  else if(k==='heist')primary=ok?(state.operation.workshop?['See your Passport',()=>setTab('passport')]:['Next: form a crew',()=>setTab('crew')]):[lead&&!state.operation.stale?'Try the Heist again':'Scout first',()=>selectJob(lead&&!state.operation.stale?'heist':'scout')];
+  else primary=['Back to the district',()=>{}];
+  const rw=r.reward||{};
+  cardFrame(p,k,`<div class="cc-result"><div class="cc-stamp ${esc(r.outcome)}">${stamp}</div><h2>${title}</h2><p class="cc-intro">${esc(r.replay.at(-1)?.text||'')}</p>${why?`<p class="cc-why">${why}</p>`:''}
+  <div class="cc-cost">${cardSupply('+'+(rw.supplies||0))}${cardChip('int','+'+(rw.intel||0),'Intel')}${cardChip('inf','+'+(rw.influence||0),'Influence')}</div>
+  <button id="res-go" class="primary" type="button">${primary[0]}</button><button id="res-replay" class="cc-link" type="button">Watch replay</button><p class="fine">Saved to your Passport.</p></div>`);
+  $('#res-go').onclick=()=>{resultToShow=null;primary[1]();if(!selectedJob)renderMission()};
+  $('#res-replay').onclick=()=>openReplay(r);
 }
-
-// ---------------------------------------------------------------- the deck
-function renderDeck() {
-  const { heistTried, done } = progress(), next = nextStep().next, lead = state.operation.lead;
-  const extra = heistTried || showAllJobs || state.receipts.some((r) => r.missionType === 'negotiate' || r.missionType === 'defend');
-  const jobs = ORDER.map((k) => state.missions.find((m) => m.kind === k)).filter((m) => m && (extra || m.kind === 'scout' || m.kind === 'heist'));
-  $('#job-board').innerHTML = jobs.map((m) => {
-    const J = JOBS[m.kind], reason = blockedReason(m);
-    const ribbon = m.kind === 'heist' && lead && !state.operation.stale && !done ? '<span class="ribbon teal">Report ready</span>'
-      : m.kind === next && !state.mission ? '<span class="ribbon">Next</span>'
-        : m.repeatToday ? '<span class="ribbon gray">Repeat · lower pay</span>' : '';
-    return `<button class="job k-${m.kind} ${selectedJob === m.kind ? 'selected' : ''}" type="button" data-job="${m.kind}" ${state.mission ? 'disabled' : ''} title="${esc(reason)}">
-      ${ribbon}<span class="art">${img(J.art)}</span>
-      <span class="body"><span class="kind-tag"><span>${J.verb}</span></span><h4>${esc(m.name)}</h4><span class="where">${J.place}</span>
-      <span class="cost">${supplyChip(m.cost)}<span class="chip"><span>win up to</span> <b>${m.reward}</b></span></span></span></button>`;
-  }).join('');
-  $$('#job-board [data-job]').forEach((b) => (b.onclick = () => selectJob(b.dataset.job)));
-  $('#more-jobs').classList.toggle('hidden', extra);
-  $('#deck-note').textContent = state.mission ? 'Finish your current mission to pick another.' : 'Pick a card to read its brief. Reading is free.';
+setInterval(updateCountdown,500);
+function renderPassport(){const r=state.receipts;const groups=[['Recorded',r.length],['Successes',r.filter(x=>x.outcome==='SUCCESS').length],['Misses',r.filter(x=>x.outcome==='MISS').length],['Withdrawals',r.filter(x=>x.outcome==='WITHDRAWN').length]];
+ $('#passport-stats').innerHTML=groups.map(([l,n])=>`<div class="panel"><span class="eyebrow">${l}</span><strong>${n}</strong><span class="fine">Last 50 receipts</span></div>`).join('');
+ $('#receipts').innerHTML=r.length?r.map(x=>`<article class="receipt"><span class="status ${x.outcome==='MISS'?'miss':x.outcome==='WITHDRAWN'?'withdrawn':''}">${esc(x.outcome)}</span><div><strong>${esc(x.missionType.toUpperCase())} · ${esc(x.domain)}</strong><span class="fine">${esc(x.label)} · ${esc(x.opponent)} / ${esc(x.opponentType)} · ${new Date(x.createdAt*1000).toLocaleString()}</span></div><button class="ghost" data-replay="${esc(x.id)}">Watch replay ↗</button></article>`).join(''):'<div class="panel"><h2>A clean page, not a perfect score.</h2><p>Complete a mission to begin your Syndicates history.</p></div>';
+ $$('[data-replay]').forEach(b=>b.onclick=()=>openReplay(r.find(x=>x.id===b.dataset.replay)));
 }
-function selectJob(kind) {
-  if (state?.mission) { notice('Finish your current job first.'); showStage(); return; }
-  if (!state.missions.find((m) => m.kind === kind)) return;
-  selectedJob = kind;
-  resultToShow = null;
-  if (tab !== 'district') setTab('district'); else { renderStage(); renderDeck(); }
-  showStage();
+function renderCrew(){const b=state.rivals;$('#rival-board').innerHTML='<p class="eyebrow">NPC CREWS · DISTRICT STANDING</p>'+b.crews.map(r=>{const holds=b.holds.filter(h=>h.crew===r.name);return '<p><b>'+esc(r.name)+'</b> · '+esc(r.doctrine)+'<br>'+r.captures+(r.captures===1?' capture · ':' captures · ')+(holds.map(h=>esc(h.block)+' held since '+new Date(h.since*1000).toLocaleDateString()).join(', ')||'No block held')+'</p>'}).join('');const c=state.crew,e=$('#crew-content');
+ if(!c){e.innerHTML=`<div class="crew-grid"><form id="create-crew" class="panel"><h2>Found a crew</h2><p class="fine">Invite up to four real players. Resources and decisions have owners.</p><label>Crew name<input type="text" name="name" required minlength="2" maxlength="32" placeholder="The Lantern Keepers"></label><button class="primary">Create crew</button></form><form id="join-crew" class="panel"><h2>Answer an invitation</h2><p class="fine">Enter a crew’s private invitation code.</p><label>Invitation code<input type="text" name="code" required maxlength="8" placeholder="8-character code"></label><button class="primary">Join crew</button></form></div>`;$('#create-crew').onsubmit=e=>{e.preventDefault();act('/api/crew/create',{name:new FormData(e.target).get('name')})};$('#join-crew').onsubmit=e=>{e.preventDefault();act('/api/crew/join',{code:new FormData(e.target).get('code')})};return}
+ e.innerHTML=`<div class="crew-grid"><div class="panel"><p class="eyebrow">${c.members.length} / 5 MEMBERS</p><h2>${esc(c.name)}</h2><p class="fine">Private invitation code: <b>${esc(c.code)}</b> <button id="copy-invite" class="text-button">Copy code</button></p><div class="crew-members">${c.members.map(m=>`<span>${esc(m.name)}${m.id===c.leader?' · Leader':''}</span>`).join('')}</div><h2>${c.treasury} Supplies in treasury</h2><button id="deposit" class="primary" ${state.agent.supplies<5?'disabled':''}>Contribute 5 Supplies</button><p class="fine">A contribution is an in-game resource spend. Only the leader can authorize upkeep.</p></div><div class="panel"><p class="eyebrow">TERRITORY WITH A PURPOSE</p><h2>Hold a place in the district.</h2><p class="fine">Requires 4 crew Influence and 5 treasury Supplies. A lease lasts 24 hours. The workshop reduces Heist entry by 1 Supply, or 2 when two members have earned Influence. The garden adds 1 Intel to successful Scout rewards, or 2 with the same crew synergy. Effects lock when each mission starts.</p>${['workshop','garden'].map(id=>{const held=state.territory.find(x=>x.block===id);return `<button class="choice" data-claim="${id}" ${held||c.leader!==state.agent.id||c.treasury<5?'disabled':''}>${id==='garden'?'Rooftop garden':'Copper workshop'}<small>${held?`Held until ${new Date(held.expires*1000).toLocaleString()} · ${held.crew===c.id?'Your crew':'Another crew'}`:'Claim for 24 hours · 5 Supplies'}</small></button>`}).join('')}</div></div>`;
+ e.insertAdjacentHTML('beforeend',`<div class="panel crew-activity"><p class="eyebrow">RECENT CREW ACTIONS</p><h2>Who changed the district?</h2>${c.activity?.length?c.activity.map(x=>`<p><b>${esc(x.name)}</b> ${esc(x.event==='crew.deposit'?'contributed '+x.detail.amount+' Supplies':x.event==='territory.claimed'?'leased the '+x.detail.block:x.event==='receipt.issued'?'recorded a '+x.detail.outcome+' mission':x.event==='crew.created'?'founded the crew':'joined the crew')} <small>${new Date(x.at*1000).toLocaleString()}</small></p>`).join(''):'<p class="fine">No crew actions recorded yet.</p>'}</div>`);
+ $('#copy-invite').onclick=async()=>{try{await navigator.clipboard.writeText(c.code);notice('Invitation code copied. Share it only with the player you intend to invite.')}catch{notice('Clipboard access is unavailable. Select the code above to copy it.',true)}};
+ $('#deposit').onclick=async()=>{if(await confirmAction('Contribute 5 Supplies?','This moves 5 earned in-game Supplies into your crew treasury.','Contribute Supplies'))await act('/api/crew/deposit',{amount:5})};
+ $$('[data-claim]').forEach(b=>b.onclick=async()=>{const place=b.dataset.claim==='garden'?'Rooftop garden':'Copper workshop';if(await confirmAction('Lease '+place+'?','The crew spends 5 treasury Supplies for a 24-hour lease.','Lease this place'))await act('/api/crew/claim',{block:b.dataset.claim})});
 }
-function locationAction(b) {
-  if (b.kind === 'home') { notice('Lantern House is your safehouse. Your Agent returns here after every mission.'); return; }
-  if (b.kind === 'territory') { setTab('crew'); return; }
-  selectJob(b.kind);
-}
-
-// ---------------------------------------------------------------- Passport
-function renderPassport() {
-  const r = state.receipts;
-  const groups = [['Missions', r.length, ''], ['Successes', r.filter((x) => x.outcome === 'SUCCESS').length, 'SUCCESS'], ['Misses', r.filter((x) => x.outcome === 'MISS').length, 'MISS'], ['Walk-aways', r.filter((x) => x.outcome === 'WITHDRAWN').length, 'WITHDRAWN']];
-  $('#passport-stats').innerHTML = groups.map(([l, n, c]) => `<div class="stat s-${c}"><small>${l}</small><b>${n}</b></div>`).join('');
-  $('#receipts').innerHTML = r.length
-    ? r.map((x) => {
-      const J = JOBS[x.missionType];
-      const word = { SUCCESS: 'SUCCESS', MISS: 'MISS', WITHDRAWN: 'WALKED AWAY', EXPIRED: 'EXPIRED' }[x.outcome] || x.outcome;
-      return `<button class="receipt" type="button" data-replay="${esc(x.id)}">${img(J ? J.art : 'lantern-house')}<span><span class="status ${x.outcome === 'MISS' ? 'miss' : x.outcome === 'SUCCESS' ? '' : 'withdrawn'}">${esc(word)}</span><b>${J ? J.verb + ' · ' + J.place : esc(x.missionType.toUpperCase())}</b><span class="when">${new Date(x.createdAt * 1000).toLocaleString()}</span></span></button>`;
-    }).join('')
-    : `<div class="card empty">${img('lantern-house')}<h3>A clean page, not a perfect score.</h3><p>Finish your first mission and it will appear here, win or miss.</p><button class="btn primary" type="button" id="passport-start">Go to missions</button></div>`;
-  $$('[data-replay]').forEach((b) => (b.onclick = () => openReplay(r.find((x) => x.id === b.dataset.replay))));
-  if ($('#passport-start')) $('#passport-start').onclick = () => setTab('district');
-}
-
-// ---------------------------------------------------------------- Crew
-function renderCrew() {
-  const b = state.rivals;
-  $('#rival-board').innerHTML = '<p class="eyebrow">RIVAL CREWS</p><h3>Who holds the district</h3><div class="rivals">' + b.crews.map((r) => {
-    const holds = b.holds.filter((h) => h.crew === r.name);
-    return `<div class="rival"><b>${esc(r.name)}</b><span>${esc(r.doctrine)}</span><br><span>${holds.map((h) => esc(h.block) + ' held since ' + new Date(h.since * 1000).toLocaleDateString()).join(', ') || 'No block held'}</span></div>`;
-  }).join('') + '</div>';
-  const c = state.crew, e = $('#crew-content');
-  if (!c) {
-    e.innerHTML = `<div class="crew-grid"><form id="create-crew" class="card"><p class="eyebrow">START ONE</p><h3>Found a crew</h3><p class="fine">Invite up to four other players with a private code.</p><label>Crew name<input type="text" name="name" required minlength="2" maxlength="32" placeholder="The Lantern Keepers"></label><button class="btn primary">Create crew</button></form><form id="join-crew" class="card"><p class="eyebrow">OR JOIN ONE</p><h3>Answer an invitation</h3><p class="fine">Enter a crew’s private invitation code.</p><label>Invitation code<input type="text" name="code" required maxlength="8" placeholder="8-character code"></label><button class="btn primary">Join crew</button></form></div>`;
-    $('#create-crew').onsubmit = (ev) => { ev.preventDefault(); act('/api/crew/create', { name: new FormData(ev.target).get('name') }); };
-    $('#join-crew').onsubmit = (ev) => { ev.preventDefault(); act('/api/crew/join', { code: new FormData(ev.target).get('code') }); };
-    return;
-  }
-  const claim = (id) => {
-    const held = state.territory.find((x) => x.block === id), name = id === 'garden' ? 'Rooftop Garden' : 'Copper Workshop';
-    const perk = id === 'garden' ? 'Extra Intel on successful Scouts.' : 'Cheaper Heists.';
-    return `<button class="choice claim" type="button" data-claim="${id}" ${held || c.leader !== state.agent.id || c.treasury < 5 ? 'disabled' : ''}>${img(id === 'garden' ? 'rooftop-garden' : 'copper-workshop')}<span><span>${name}</span><small><span>${perk}</span> <span>${held ? `Held until ${new Date(held.expires * 1000).toLocaleString()} · ${held.crew === c.id ? 'Your crew' : 'Another crew'}` : 'Lease for 24 hours · 5 Supplies'}</span></small></span></button>`;
-  };
-  e.innerHTML = `<div class="crew-grid"><div class="card"><p class="eyebrow">${c.members.length} / 5 MEMBERS</p><h3>${esc(c.name)}</h3><p class="fine">Private invitation code: <b>${esc(c.code)}</b> <button id="copy-invite" class="text-button" type="button">Copy code</button></p><div class="crew-members">${c.members.map((m) => `<span>${esc(m.name)}${m.id === c.leader ? ' · Leader' : ''}</span>`).join('')}</div><h3>${c.treasury} Supplies in treasury</h3><button id="deposit" class="btn primary" type="button" ${state.agent.supplies < 5 ? 'disabled' : ''}>Contribute 5 Supplies</button><p class="fine">The leader confirms leases. Contributions are in-game Supplies.</p></div>
-    <div class="card"><p class="eyebrow">CLAIM A PLACE</p><h3>Lease a block for a perk</h3><p class="fine">Needs 4 crew Influence this season and 5 Supplies in the treasury. A lease lasts 24 hours. Two contributing members make the perk stronger.</p><div class="claim-grid">${claim('workshop')}${claim('garden')}</div></div></div>
-    <div class="card crew-activity"><p class="eyebrow">RECENT CREW ACTIONS</p>${c.activity?.length ? c.activity.map((x) => `<p><b>${esc(x.name)}</b> ${esc(x.event === 'crew.deposit' ? 'contributed ' + x.detail.amount + ' Supplies' : x.event === 'territory.claimed' ? 'leased the ' + x.detail.block : x.event === 'receipt.issued' ? 'recorded a ' + x.detail.outcome + ' mission' : x.event === 'crew.created' ? 'founded the crew' : 'joined the crew')} <small>${new Date(x.at * 1000).toLocaleString()}</small></p>`).join('') : '<p class="fine">No crew actions recorded yet.</p>'}</div>`;
-  $('#copy-invite').onclick = async () => {
-    try { await navigator.clipboard.writeText(c.code); notice('Invitation code copied. Share it only with the player you intend to invite.'); } catch { notice('Clipboard access is unavailable. Select the code above to copy it.', true); }
-  };
-  $('#deposit').onclick = async () => { if (await confirmAction('Contribute 5 Supplies?', 'This moves 5 earned in-game Supplies into your crew treasury.', 'Contribute Supplies')) await act('/api/crew/deposit', { amount: 5 }); };
-  $$('[data-claim]').forEach((btn) => (btn.onclick = async () => {
-    const place = btn.dataset.claim === 'garden' ? 'Rooftop garden' : 'Copper workshop';
-    if (await confirmAction('Lease ' + place + '?', 'The crew spends 5 treasury Supplies for a 24-hour lease.', 'Lease this place')) await act('/api/crew/claim', { block: btn.dataset.claim });
-  }));
-}
-
-// ---------------------------------------------------------------- Permissions
-function renderPolicy() {
-  const p = state.agent.policy;
-  if (document.activeElement?.closest?.('#policy-form')) return; // don't overwrite while editing
-  $('#budget').value = p.maxSupplies;
-  $('#risk').checked = p.allowRisk;
-  $('#stopped').checked = p.stopped;
-  $('#allowed').innerHTML = '<legend>Allowed jobs</legend>' + ORDER.map((k) => state.missions.find((m) => m.kind === k)).filter(Boolean).map((m) => `<label class="check"><input type="checkbox" value="${m.kind}" ${p.allowed.includes(m.kind) ? 'checked' : ''}> ${JOBS[m.kind].verb}</label>`).join('');
-  $('#policy-version').textContent = 'Policy version ' + p.version + ' · Applies immediately; mission budgets cannot be increased mid-run.';
-}
-$('#policy-form').onsubmit = async (e) => {
-  e.preventDefault();
-  const payload = { maxSupplies: Number($('#budget').value), allowRisk: $('#risk').checked, stopped: $('#stopped').checked, allowed: $$('#allowed input:checked').map((x) => x.value) };
-  if (payload.stopped && !state.agent.policy.stopped && !(await confirmAction('Turn on the emergency stop?', 'New missions and choices will be blocked immediately. Active jobs can still be withdrawn.', 'Turn on stop'))) return;
-  document.activeElement?.blur?.();
-  await act('/api/policy', payload);
-  if (!$('#notice').textContent) notice('Permissions saved. Your Agent now follows these limits.');
-};
-
-// ---------------------------------------------------------------- dialogs
-function confirmAction(title, body, yes) {
-  const d = $('#confirm-modal');
-  $('#confirm-title').textContent = title;
-  $('#confirm-body').textContent = body;
-  $('#confirm-yes').textContent = yes;
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (answer) => { if (done) return; done = true; d.close(); resolve(answer); };
-    $('#confirm-no').onclick = () => finish(false);
-    $('#confirm-yes').onclick = () => finish(true);
-    d.oncancel = (e) => { e.preventDefault(); finish(false); };
-    d.showModal();
-  });
-}
-function openReplay(r) {
-  if (!r) return;
-  receipt = r;
-  clearInterval(replayTimer);
-  $('#replay-title').textContent = r.missionType.toUpperCase() + ' / ' + r.outcome;
-  const assessment = ['switchyard-2.0.0', 'switchyard-2.1.0', 'switchyard-2.2.0'].includes(r.contentVersion) && r.opponentType === 'NPC'
-    ? `<div class="replay-assessment"><b>Decision assessment</b><span>Plan ${r.score} / resistance ${r.threshold} · alert ${r.context.startingAlert} → ${r.context.alertAfter}</span><small>${r.context.repeatToday ? 'Repeat mission: reduced Supplies, no Influence.' : 'First mission of this type today.'} ${r.missionType === 'heist' && r.context.scoutReceipt ? 'Verified Scout report used.' : ''}</small></div>` : '';
-  $('#replay-body').innerHTML = `<span class="status ${r.outcome === 'MISS' ? 'miss' : ''}">${esc(r.label)} · ${esc(r.opponentType)} OPPOSITION</span>${assessment}<div class="timeline">${r.replay.map((e, i) => `<div class="event active" data-event="${i}"><small>${String(e.tick).padStart(2, '0')}s / ${e.type.toUpperCase()}</small>${esc(e.text)}</div>`).join('')}</div><div class="proof-code">Receipt ${esc(r.id)}<br>Replay hash ${esc(r.replayHash)}<br>Policy hash ${esc(r.policyHash)}</div><p class="fine">Verify signature checks this game’s signed result. It does not prove a real-world event.</p>`;
-  $('#verification').textContent = '';
-  $('#replay-modal').showModal();
-}
-$('#close-replay').onclick = () => { clearInterval(replayTimer); $('#replay-modal').close(); };
-$('#replay-modal').addEventListener('close', () => clearInterval(replayTimer));
-$('#replay-play').onclick = () => {
-  clearInterval(replayTimer);
-  let i = 0;
-  $$('[data-event]').forEach((e) => e.classList.remove('active'));
-  replayTimer = setInterval(() => { const e = $(`[data-event="${i}"]`); if (e) { e.classList.add('active'); i++; } else clearInterval(replayTimer); }, 650);
-};
-$('#receipt-download').onclick = () => {
-  const u = URL.createObjectURL(new Blob([JSON.stringify(receipt, null, 2)], { type: 'application/json' }));
-  const a = document.createElement('a');
-  a.href = u; a.download = receipt.id + '.json'; a.click();
-  setTimeout(() => URL.revokeObjectURL(u), 1000);
-};
-$('#receipt-verify').onclick = async () => {
-  try {
-    const r = await api('/api/verify', { receipt });
-    $('#verification').textContent = r.valid ? '✓ Signature, replay hash and seed commitment verified by this service. Export the receipt for independent CLI verification.' : 'Verification failed.';
-  } catch (e) { $('#verification').textContent = e.message; }
-};
-
-// ---------------------------------------------------------------- wiring
-$$('[data-tab]').forEach((b) => (b.onclick = () => setTab(b.dataset.tab)));
-$('#show-all-jobs').onclick = () => { showAllJobs = true; renderDeck(); };
-$('#resupply').onclick = () => act('/api/resupply');
-$('#lay-low').onclick = async () => { if (await confirmAction('Lay low?', 'Spend 3 earned Supplies to lower Alert by up to 2. Once per day, between missions.', 'Lay low')) await act('/api/lay-low'); };
-$('#enter').onclick = async () => { try { const r = await api('/api/session', {}); csrf = r.csrf; await refresh(); window.dispatchEvent(new Event('kult:entered')); } catch (e) { notice(e.message, true); } };
-$('#retry').onclick = () => refresh().catch((e) => notice(e.message, true));
-$('#home').onclick = () => { location.href = new URL('home.html', appRoot).href; };
-$('#return-dismiss').onclick = () => $('#return-brief').classList.add('hidden');
-
+function confirmAction(title,body,yes){const d=$('#confirm-modal');$('#confirm-title').textContent=title;$('#confirm-body').textContent=body;$('#confirm-yes').textContent=yes;return new Promise(resolve=>{let done=false;const finish=answer=>{if(done)return;done=true;d.close();resolve(answer)};$('#confirm-no').onclick=()=>finish(false);$('#confirm-yes').onclick=()=>finish(true);d.oncancel=e=>{e.preventDefault();finish(false)};d.showModal()})}
+function openReplay(r){receipt=r;clearInterval(replayTimer);$('#replay-title').textContent=r.missionType.toUpperCase()+' / '+r.outcome;const assessment=['switchyard-2.0.0','switchyard-2.1.0','switchyard-2.2.0'].includes(r.contentVersion)&&r.opponentType==='NPC'?`<div class="replay-assessment"><b>Decision assessment</b><span>Plan ${r.score} / resistance ${r.threshold} · alert ${r.context.startingAlert} → ${r.context.alertAfter}</span><small>${r.context.repeatToday?'Repeat mission: reduced Supplies, no Influence.':'First mission of this type today.'} ${r.missionType==='heist'&&r.context.scoutReceipt?'Verified Scout report used.':''}</small></div>`:'';$('#replay-body').innerHTML=`<span class="status ${r.outcome==='MISS'?'miss':''}">${esc(r.label)} · ${esc(r.opponentType)} OPPOSITION</span>${assessment}<div class="timeline">${r.replay.map((e,i)=>`<div class="event active" data-event="${i}"><small>${String(e.tick).padStart(2,'0')}s / ${e.type.toUpperCase()}</small>${esc(e.text)}</div>`).join('')}</div><div class="proof-code">Receipt ${esc(r.id)}<br>Replay hash ${esc(r.replayHash)}<br>Policy hash ${esc(r.policyHash)}</div>`;$('#verification').textContent='';$('#replay-modal').showModal()}
+$('#close-replay').onclick=()=>{clearInterval(replayTimer);$('#replay-modal').close()};$('#replay-modal').addEventListener('close',()=>clearInterval(replayTimer));
+$('#replay-play').onclick=()=>{clearInterval(replayTimer);let i=0;$$('[data-event]').forEach(e=>e.classList.remove('active'));replayTimer=setInterval(()=>{const e=$(`[data-event="${i}"]`);if(e){e.classList.add('active');i++}else clearInterval(replayTimer)},650)};
+$('#receipt-download').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(receipt,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download=receipt.id+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
+$('#receipt-verify').onclick=async()=>{try{const r=await api('/api/verify',{receipt});$('#verification').textContent=r.valid?'✓ Signature, replay hash and seed commitment verified by this service. Export the receipt for independent CLI verification.':'Verification failed.'}catch(e){$('#verification').textContent=e.message}};
+$('#policy-form').onsubmit=async e=>{e.preventDefault();const payload={maxSupplies:Number($('#budget').value),allowRisk:$('#risk').checked,stopped:$('#stopped').checked,allowed:$$('#allowed input:checked').map(x=>x.value)};if(payload.stopped&&!state.agent.policy.stopped){if(!await confirmAction('Activate emergency stop?','New missions and choices will be blocked immediately. Active jobs can still be withdrawn.','Activate stop'))return}await act('/api/policy',payload);if(!$('#notice').textContent)notice('Permissions saved. Your Agent now follows this card.')};
+$$('[data-tab]').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));$('#resupply').onclick=()=>act('/api/resupply');$('#lay-low').onclick=async()=>{if(await confirmAction('Lay low in the district?','Spend 3 earned Supplies to reduce alert by 2. Available once per day and only between missions.','Lay low'))await act('/api/lay-low')};
+$('#enter').onclick=async()=>{try{const r=await api('/api/session',{});csrf=r.csrf;await refresh();window.dispatchEvent(new Event('kult:entered'))}catch(e){notice(e.message,true)}};
+$('#retry').onclick=()=>refresh().catch(e=>notice(e.message,true));
+$('#home').onclick=()=>{location.href=new URL('home.html',appRoot).href};
+// The first-visit tour (tour.js, the KULT Syndicates First Visit manual) opens from #how-to-play.
+$('#return-dismiss').onclick=()=>$('#return-brief').classList.add('hidden');
+$('#list-toggle').onclick=()=>{if(godot)stopGodot();$('#map-wrap').classList.toggle('hidden');$('#map-list').classList.toggle('hidden');const list=$('#map-wrap').classList.contains('hidden');$('#list-toggle').textContent=list?'Map view':'List view';$('#list-toggle').setAttribute('aria-pressed',String(list))};
+function stopGodot(){godot=false;document.body.classList.remove('godot-mode');$('#godot-toggle').textContent='Godot game';$('#godot-frame').src='about:blank';$('#godot-frame').classList.add('hidden');$('#map-wrap').classList.remove('hidden');refresh().catch(e=>notice(e.message))}
+function showCapabilities(h){if(!h)return;const b=$('#godot-toggle');b.classList.toggle('hidden',new URLSearchParams(location.search).get('legacy')!=='1');b.disabled=!h.godotExport;b.textContent=h.godotExport?'Godot game':'Godot source';b.title=h.godotExport?'Open the exported Godot experience':'Godot Web export is not installed; Canvas and list mode are fully playable'}
+$('#godot-toggle').onclick=async()=>{if(godot){stopGodot();return}const h=await api('/api/health');showCapabilities(h);if(!h.godotExport)return;godot=true;document.body.classList.add('godot-mode');$('#godot-toggle').textContent='Exit Godot';$('#map-wrap').classList.add('hidden');$('#map-list').classList.add('hidden');$('#godot-frame').src=new URL('godot/index.html',appRoot).href;$('#godot-frame').classList.remove('hidden')};
 // The Godot web build calls this bridge on the same-origin parent; credentials stay here.
-window.KultBridge = {
-  call: async (path, body) => {
-    if (!/^\/api\/(state|policy|social\/policy|pvp\/(?:create|join|choice|leave)|hiring\/(?:create|accept|cancel)|missions(?:\/job_[a-f0-9]+\/(?:choice|withdraw|resolve))?|resupply|lay-low)$/.test(path)) throw Error('Bridge route not allowed');
-    const r = await api(path, body === null ? undefined : body);
-    if (body !== null) await refresh();
-    return r;
-  },
-  home: () => (location.href = new URL('home.html', appRoot).href),
-};
-// Older scripts (social.js) open "the console": that is the stage card now.
-window.KultWorldUI = { openConsole: showStage, closeConsole: () => {} };
-window.KultDistrictAPI = { getState: () => state, getTab: () => tab, getSelected: () => selectedJob, select: locationAction, selectJob };
+window.KultBridge={call:async(path,body)=>{if(!/^\/api\/(state|policy|social\/policy|pvp\/(?:create|join|choice|leave)|hiring\/(?:create|accept|cancel)|missions(?:\/job_[a-f0-9]+\/(?:choice|withdraw|resolve))?|resupply|lay-low)$/.test(path))throw Error('Bridge route not allowed');const r=await api(path,body===null?undefined:body);if(body!==null)await refresh();return r},home:()=>location.href=new URL('home.html',appRoot).href};
+const refreshOnReturn=()=>{if(state&&!busy&&!document.hidden)refresh(true).catch(e=>notice(e.message,true))};
+window.addEventListener('focus',refreshOnReturn);document.addEventListener('visibilitychange',refreshOnReturn);
 
-const refreshOnReturn = () => { if (state && !busy && !document.hidden) refresh(true).catch((e) => notice(e.message, true)); };
-window.addEventListener('focus', refreshOnReturn);
-document.addEventListener('visibilitychange', refreshOnReturn);
-
-(async () => {
-  try {
-    const params = new URLSearchParams(location.hash.slice(1));
-    const ticket = params.get('launch');
-    if (ticket) { history.replaceState(null, '', location.pathname + location.search); await api('/api/session', { ticket }); }
-    await refresh(true);
-    setTab('district');
-    window.dispatchEvent(new Event('kult:entered'));
-  } catch (e) {
-    $('#login').classList.remove('hidden');
-    const h = await api('/api/health').catch(() => null);
-    if (h && !h.demo) {
-      $('#enter').classList.add('hidden');
-      $('#login-text').textContent = 'Open Syndicates from KULT World using a signed launch ticket for your existing Agent.';
-    }
-    if (e.message && !e.message.startsWith('Session expired')) notice(e.message, true);
-  }
-})();
+// Accessible Canvas fallback. Three.js takes over when WebGL is available.
+window.KultDistrictAPI={getState:()=>state,getTab:()=>tab,getSelected:()=>selectedJob,select:locationAction,selectJob:k=>selectJob(k)};
+// Original code-drawn isometric art. No WebGL or remote assets required.
+const canvas=$('#map'),ctx=canvas.getContext('2d');let points=[],player={x:3,y:7},target={x:3,y:7},keys={},route=[],last=0,t=0;
+if(!ctx){$('#map-wrap').classList.add('hidden');$('#map-list').classList.remove('hidden');$('#list-toggle').textContent='Map unavailable';$('#list-toggle').disabled=true;notice('Map rendering is unavailable on this device. Use the fully playable list view.');}
+else if(false){$('#map-wrap').classList.add('hidden');$('#map-list').classList.remove('hidden');$('#list-toggle').textContent='Map view';$('#list-toggle').setAttribute('aria-pressed','true')}
+function walkable(x,y){return x>=0&&y>=0&&x<10&&y<10&&!(x===4&&y!==3&&y!==7)&&!state.blocks.some(b=>b.x===x&&b.y===y)}
+function routeTo(tx,ty){let end={x:Math.round(tx),y:Math.round(ty)};if(!walkable(end.x,end.y)){const n=[[0,1],[1,0],[0,-1],[-1,0]].map(([x,y])=>({x:end.x+x,y:end.y+y})).filter(p=>walkable(p.x,p.y));if(!n.length)return;end=n.sort((a,b)=>(Math.abs(a.x-player.x)+Math.abs(a.y-player.y))-(Math.abs(b.x-player.x)+Math.abs(b.y-player.y)))[0]}const start={x:Math.round(player.x),y:Math.round(player.y)},key=p=>p.x+','+p.y,q=[start],parent=new Map([[key(start),null]]);let found=false;for(let i=0;i<q.length;i++){let p=q[i];if(key(p)===key(end)){found=true;break}for(const [dx,dy] of [[0,1],[1,0],[0,-1],[-1,0]]){const n={x:p.x+dx,y:p.y+dy};if(walkable(n.x,n.y)&&!parent.has(key(n))){parent.set(key(n),p);q.push(n)}}}if(!found)return;let result=[],p=end;while(p&&key(p)!==key(start)){result.unshift(p);p=parent.get(key(p))}route=result;target=route.shift()||start}
+function poly(v,fill,stroke){ctx.beginPath();v.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}
+function iso(x,y,z=0){return [(x-y)*30+335,(x+y)*15+48-z]}
+function box(x,y,w,d,h,color,roof){const a=iso(x,y),b=iso(x+w,y),c=iso(x+w,y+d),d1=iso(x,y+d);poly([d1,c,[c[0],c[1]-h],[d1[0],d1[1]-h]],color);poly([b,c,[c[0],c[1]-h],[b[0],b[1]-h]],'#253f41');poly([[a[0],a[1]-h],[b[0],b[1]-h],[c[0],c[1]-h],[d1[0],d1[1]-h]],roof);return {a,b,c,d:d1}}
+function drawTree(x,y){const p=iso(x,y);ctx.fillStyle='#102b2c';ctx.fillRect(p[0]-2,p[1]-19,4,23);for(let j=0;j<3;j++){ctx.fillStyle=['#3d6a5a','#74a46d','#a9c37f'][j];ctx.fillRect(p[0]-12+j*2,p[1]-29-j*6,24-j*4,14)}ctx.fillStyle='#d5ed91';ctx.fillRect(p[0]+8,p[1]-28,2,2)}
+function drawLamp(x,y){const p=iso(x,y);const halo=ctx.createRadialGradient(p[0],p[1]-27,1,p[0],p[1]-27,26);halo.addColorStop(0,'#ffe0a176');halo.addColorStop(1,'#ffe0a100');ctx.fillStyle=halo;ctx.fillRect(p[0]-26,p[1]-53,52,52);ctx.fillStyle='#1b3338';ctx.fillRect(p[0]-1,p[1]-30,2,30);ctx.fillStyle='#f6cf80';ctx.fillRect(p[0]-3,p[1]-34,6,5);ctx.fillStyle='#e8dda3';ctx.fillRect(p[0]-2,p[1]-33,4,2)}
+function building(b){let x=b.x-.55,y=b.y-.55;const high=b.kind==='heist'?45:b.kind==='scout'?43:b.kind==='home'?27:29;box(x,y,1.2,1.2,high,'#71897b','#b3c1a0');box(x+.12,y+.12,.95,.95,high+5,'#567065','#d9d4ac');const p=iso(x+1.22,y+.3);ctx.fillStyle='#d4e989';for(let j=0;j<3;j++)ctx.fillRect(p[0]-j*8,p[1]-high+11+j*4,5,7);const front=iso(x+.6,y+1.2);ctx.fillStyle='#172d31';ctx.fillRect(front[0]-4,front[1]-14,8,14);ctx.fillStyle='#e8c374';ctx.fillRect(front[0]-5,front[1]-17,10,3);if(b.kind==='home'){const rp=iso(x+.6,y+.7,high+12);ctx.fillStyle='#cfe981';ctx.fillRect(rp[0],rp[1]-12,2,18);ctx.fillRect(rp[0]+2,rp[1]-12,10,7)}if(b.kind==='territory'){for(let j=0;j<3;j++){let g=iso(x+.2+j*.25,y+.4,high+9);ctx.fillStyle='#335a46';ctx.fillRect(g[0]-5,g[1]-3,12,6);ctx.fillStyle='#96ac70';ctx.fillRect(g[0]-4,g[1]-6,10,4)}}
+if(b.kind==='negotiate'){poly([iso(x+.1,y+.1,high+8),iso(x+1,y+.1,high+8),iso(x+1,y+.8,high+8),iso(x+.1,y+.8,high+8)],'#c29c64');ctx.fillStyle='#ecdcaa';ctx.fillRect(front[0]-13,front[1]-20,26,4)}
+if(b.kind==='scout'){const q=iso(x+.6,y+.6,high+10);ctx.strokeStyle='#c9d5b1';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(q[0],q[1]-16);ctx.stroke();ctx.fillStyle='#92c8ab';ctx.fillRect(q[0]-6,q[1]-19,12,6)}
+if(b.id==='workshop'){const q=iso(x+.2,y+.4,high+8);ctx.fillStyle='#a36f52';ctx.fillRect(q[0],q[1]-12,7,16);ctx.fillStyle='#d2ad7d';ctx.fillRect(q[0]-1,q[1]-14,9,3)}
+if(b.kind==='heist'){poly([iso(x+.2,y+.2,high+7),iso(x+.75,y+.2,high+7),iso(x+.75,y+.85,high+7),iso(x+.2,y+.85,high+7)],'#365b61');const rp=iso(x+.8,y+.3,high+5);ctx.strokeStyle='#aebca7';ctx.beginPath();ctx.moveTo(...rp);ctx.lineTo(rp[0],rp[1]-20);ctx.stroke();ctx.fillStyle='#eab477';ctx.fillRect(rp[0]-3,rp[1]-23,6,4)}}
+function agent(x,y,accent='#dbed98'){const p=iso(x,y);ctx.fillStyle='#061e2770';ctx.beginPath();ctx.ellipse(p[0],p[1]+3,9,4,0,0,Math.PI*2);ctx.fill();let bob=Math.sin(t*5)*.6;ctx.fillStyle='#202b35';ctx.fillRect(p[0]-6,p[1]-15+bob,12,12);ctx.fillStyle='#dfdfd1';ctx.fillRect(p[0]-7,p[1]-24+bob,14,12);ctx.fillStyle='#27343b';ctx.fillRect(p[0]-5,p[1]-20+bob,10,7);ctx.fillStyle=accent;ctx.fillRect(p[0]-3,p[1]-18+bob,6,2);ctx.fillStyle='#829b95';ctx.fillRect(p[0]-5,p[1]-3,3,5);ctx.fillRect(p[0]+2,p[1]-3,3,5);ctx.fillStyle='#ddbb73';ctx.fillRect(p[0]+5,p[1]-11+bob,2,4);const d=iso(x+.4,y-.1,26+Math.sin(t*2)*2);ctx.fillStyle='#071f28';ctx.fillRect(d[0]-3,d[1]-3,7,6);ctx.fillStyle=accent;ctx.fillRect(d[0]-1,d[1]-1,3,2)}
+function draw(now){if(!ctx)return;requestAnimationFrame(draw);const dt=Math.min((now-last)/1000,.05);last=now;t+=dt;if(window.kult3dActive||godot||!state||tab!=='district'||$('#map-wrap').classList.contains('hidden'))return;
+ const vx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0),vy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);if((vx||vy)&&route.length===0&&Math.hypot(target.x-player.x,target.y-player.y)<.1)routeTo(Math.round(player.x)+vx+vy,Math.round(player.y)+vy-vx);const dist=Math.hypot(target.x-player.x,target.y-player.y);if(dist<.06){player.x=target.x;player.y=target.y;if(route.length)target=route.shift()}else{const f=Math.min(1,dt*3/dist);player.x+=(target.x-player.x)*f;player.y+=(target.y-player.y)*f;}
+ const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio,2);if(canvas.width!==Math.floor(rect.width*dpr)||canvas.height!==Math.floor(rect.height*dpr)){canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr)}ctx.setTransform(canvas.width/670,0,0,canvas.height/420,0,0);ctx.fillStyle='#152d32';ctx.fillRect(0,0,670,420);
+ const grad=ctx.createRadialGradient(330,170,10,340,210,360);grad.addColorStop(0,'#33574b');grad.addColorStop(1,'#142b31');ctx.fillStyle=grad;ctx.fillRect(0,0,670,420);
+ box(-.1,-.1,9.8,9.8,0,'#132a2c','#213c39');for(let y=0;y<10;y++)for(let x=0;x<10;x++){const pts=[iso(x,y),iso(x+1,y),iso(x+1,y+1),iso(x,y+1)];let water=x===4&&y!==3&&y!==7;poly(pts,water?((x+y)%2?'#327c7a':'#3b8c84'):((x+y)%2?'#536b61':'#5d7568'),'#33564e80');const p=iso(x+.5,y+.5);if(water){ctx.fillStyle='#a2e5c455';ctx.fillRect(p[0]-8+Math.sin(t+y)*3,p[1]-2,16,1);ctx.fillStyle='#f8ddac30';ctx.fillRect(p[0]+4,p[1]+4,6,1)}else{ctx.fillStyle='#c8d3a638';ctx.fillRect(p[0]-4,p[1],7,1);if((x+y)%3===0){ctx.fillStyle='#274d445a';ctx.fillRect(p[0]+7,p[1]+2,3,2)}}if(x===4&&(y===3||y===7)){const edge=iso(x+.2,y+.55);ctx.fillStyle='#e2c78a';ctx.fillRect(edge[0]-14,edge[1]-9,28,2);ctx.fillStyle='#c8d6bd';ctx.fillRect(edge[0]-14,edge[1]-14,2,6);ctx.fillRect(edge[0]+12,edge[1]-14,2,6)}}
+ const objects=state.blocks.map(b=>({depth:b.x+b.y,draw:()=>building(b)}));for(const [x,y] of [[0,1],[1,0],[9,1],[9,7],[0,8],[2,8],[6,1],[8,8],[1,3]])objects.push({depth:x+y,draw:()=>drawTree(x,y)});for(const [x,y] of [[2,4],[6,3],[7,8],[3,8]])objects.push({depth:x+y,draw:()=>drawLamp(x,y)});objects.push({depth:player.x+player.y+.5,draw:()=>agent(player.x,player.y)});objects.sort((a,b)=>a.depth-b.depth).forEach(x=>x.draw());
+ points=[];ctx.textAlign='center';const offsets={home:[-24,6],canal:[0,-13],commons:[26,-5],depot:[-4,3],gate:[-27,7],workshop:[-14,-9],garden:[26,-9]};for(const b of state.blocks){const p=iso(b.x,b.y,73),o=offsets[b.id]||[0,0];p[0]+=o[0];p[1]+=o[1];const active=state.mission?.kind===b.kind||selectedJob===b.kind;ctx.font='bold 8px monospace';let label=b.kind==='scout'&&state.operation.lead?'CANAL · REPORT READY':b.kind==='heist'&&state.operation.completedReceipt?'DEPOT · CLEARED':state.territory.some(x=>x.block===b.id)?b.name.toUpperCase()+' · HELD':b.name.toUpperCase();let w=ctx.measureText(label).width+16;ctx.fillStyle=active?'#e6f29b':b.kind==='scout'&&state.operation.lead?'#236468':'#102c32ed';ctx.fillRect(p[0]-w/2,p[1]-10,w,18);ctx.fillStyle=active?'#18332d':'#e5edd2';ctx.fillText(label,p[0],p[1]+3);points.push({b,x:p[0],y:p[1],w});}
+ const pp=iso(player.x,player.y,36);ctx.font='7px monospace';ctx.fillStyle='#e1ecad';ctx.fillText(window.kultI18n?window.kultI18n.t('YOU'):'YOU',pp[0],pp[1]);ctx.textAlign='left';ctx.fillStyle='#abc6af55';ctx.font='9px monospace';ctx.fillText('SW / 01     FIELD VIEW',22,25);ctx.fillText('N ↗',617,25);
+}
+canvas.addEventListener('click',e=>{if(!state)return;const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*670/r.width,y=(e.clientY-r.top)*420/r.height;const hit=points.find(p=>Math.abs(x-p.x)<p.w/2+10&&Math.abs(y-p.y)<18);if(hit){routeTo(hit.b.x,hit.b.y+1);locationAction(hit.b);return}const a=(x-335)/30,b=(y-48)/15;routeTo(Math.max(0,Math.min(9,(a+b)/2)),Math.max(0,Math.min(9,(b-a)/2)));canvas.focus()});
+canvas.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowDown','ArrowUp','w','a','s','d'].includes(e.key)){e.preventDefault();keys[e.key]=true}});window.addEventListener('keyup',e=>keys[e.key]=false);window.addEventListener('blur',()=>keys={});requestAnimationFrame(draw);
+(async()=>{try{const params=new URLSearchParams(location.hash.slice(1));const ticket=params.get('launch');if(ticket){history.replaceState(null,'',location.pathname+location.search);await api('/api/session',{ticket})}await refresh(true);window.dispatchEvent(new Event('kult:entered'));showCapabilities(await api('/api/health').catch(()=>null))}catch(e){$('#login').classList.remove('hidden');const h=await api('/api/health').catch(()=>null);showCapabilities(h);$('#mode').textContent=h?.demo?'SANDBOX':'KULT SIGN-IN';if(h&&!h.demo){$('#enter').classList.add('hidden');$('#login-text').textContent='Open Syndicates from KULT World using a signed launch ticket for your existing Agent.'}if(e.message&&!e.message.startsWith('Session expired'))notice(e.message,true)}})();

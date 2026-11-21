@@ -10,20 +10,22 @@ A playable Switchyard district for KULT World: Scout the canal, use verified int
 - **Territory competition.** A crew reclaims a rival-held block with the existing lease rules (5 treasury Supplies, 4 seasonal Influence). The Crew page shows each rival's doctrine, captures and current holds.
 - **Adaptive missions.** Earlier Scout reports, Heists and negotiation choices shape later difficulty, patrol intelligence and cost. A report goes stale after two report-led entries change the patrol. New NPC missions use `switchyard-2.2.0`.
 - **Return briefs.** On return, a brief appears only when recorded state changed: a crew action, territory, a rival move or a new receipt.
-- **First-visit tour and player handbook.** (Replaced by the welcome cards since the card layout.) On the first visit an interactive tour walked the six chapters of the KULT Syndicates First Visit manual on the real interface: start here, the first two missions, the mission board, Play & Hire, crew and territory, Passport and return. It spotlights each part, opens the pages it describes, and pauses after chapter 02 so a new player can start the Scout. Guide (key G) reopens it, and the printable [player handbook](web/player-guide.html) follows the same six chapters.
+- **First-visit tour and player handbook.** On the first visit an interactive tour (`web/tour.js`) walks the six chapters of the KULT Syndicates First Visit manual on the real interface: start here, the first two missions, the mission board, Play & Hire, crew and territory, Passport and return. It spotlights each part, opens the pages it describes, and pauses after chapter 02 so a new player can start the Scout. Guide (key G) reopens it, and the printable [player handbook](web/player-guide.html) follows the same six chapters.
 - **Backend.** Migration `004_rivals.sql` adds `rival_moves` and `rival_holds` (schema 4); existing Agents, receipts and signing keys are untouched. Pending `switchyard-2.0.0` and `2.1.0` missions keep their original rules.
 - **KULT World adapter.** Accepts `switchyard-2.1.0` and `switchyard-2.2.0` receipts (`integration/world-adapter.cjs`; apply the same change in KULT World before deploying).
 
-## The Switchyard as cards
+## Easier first visit (on the 3D Switchyard)
 
-The game is a card table, built so a first-time player knows what to do next:
+- **Mission console as cards** (`web/app.js`, `web/console-cards.css`). The console shows one thing at a time: the next step of the goal, a brief with its cost, one decision, the countdown, or the result with one next action (for example Plan the Heist after a good Scout). A decision card shows the situation, the Agent's field note and big choice cards with their cost; a choice the Permissions or balances rule out says why.
+- **Three welcome cards** (`web/welcome.js`) open on the first visit and from Guide: who decides what, the first goal, and the four resources. The last card opens the Scout brief, or the full guided tour (`web/tour.js`).
+- Card art is rendered from the district's Meshy models (`web/art/cards/`).
 
-- **One card for right now** (`web/app.js`, `web/cards.css`). It is always the single next thing: the next step of the goal (Scout Canal Watch → Heist Midnight Depot → claim territory with a crew), a mission brief with its cost, one decision, the countdown, or the result with one clear next action.
-- **A decision is one card.** The situation, your Agent's field note (the clues it found and its advice, never a promise), and two or three big choice cards that show their cost. A choice your Permissions or balances rule out says why.
-- **The mission deck.** Scout and Heist first; Negotiate and Defend join after the first Heist (or on request). Art is rendered from the district's Meshy models (`web/art/cards/`).
-- **Three welcome cards** (`web/welcome.js`) replace the long tour: who decides what, the first goal, and the four resources. The last card opens the Scout brief. How to play (?) reopens them; the printable handbook has the rest.
-- Passport, Crew, Hire & Duel and Permissions are tabs (a bottom bar on phones). English and 中文 both work (`web/i18n.js`).
-- Opened from KULT World, the player's own Agent appears on the Agent card (`web/kult-agent.js`). Its identity is still the signed launch ticket. The 3D district (`web/world.js`, `web/models/`) is no longer loaded by the page.
+## The Switchyard in KULT World's style
+
+- A full-screen 3D floating island (`web/world.js`) built like KULT World's city: Meshy-made tiles, sky-rock, rail-yard props and seven landmarks, with KULT World's sky, lighting and bloom. Walk by clicking or WASD; E at a door opens its job.
+- A glass HUD, quest tracker, mission console, minimap and dock open Jobs, Play & Hire, Passport, Crew, Permissions, the Console and the Guide as glass pages (`web/shell.js`, `web/switchyard.css`).
+- Opened from KULT World, the player's own Agent appears on the HUD card and walks the district as its 3D model (`web/kult-agent.js`). Its identity is still the signed launch ticket.
+- All assets, API calls, cookies and the optional Godot bridge support the isolated `/world/syndicates/` mount. If WebGL is unavailable the 2D map and the Jobs page keep every mission playable.
 
 ## Earlier releases
 
