@@ -147,3 +147,11 @@
   .return-brief { top: calc(var(--t-top) + var(--t-g) * 2); left: calc(var(--t-g) * 2); width: calc(100vw - var(--t-right) - 110px); min-width: 0; transform: none; animation: none; }
   .pages { top: var(--t-top); bottom: var(--t-bar); padding: 14px; }
 }
+
+/* 13-inch laptops (about 720px of height): a smaller minimap gives the goal room, and the goal drops its long paragraph (the console says what to do). */
+@media (min-width: 1180px) and (max-height: 860px) {
+  .minimap, body.console-open .minimap { height: 196px; }
+  .minimap canvas { width: 136px; height: 136px; }
+  .quest-tracker, body.console-open .quest-tracker { max-height: calc(100vh - var(--f-top) - var(--f-bar) - var(--f-g) * 3 - 196px); }
+  .quest-tracker #operation-detail { display: none; }
+}
